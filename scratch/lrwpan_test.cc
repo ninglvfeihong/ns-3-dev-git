@@ -15,17 +15,30 @@
  */
 
 #include "ns3/core-module.h"
-#include "helper/util.h"
+#include "ns3/config-store-module.h"
+
 
 using namespace ns3;
 
 NS_LOG_COMPONENT_DEFINE ("LrWpanTestByXiao");
 
+namespace xiao
+{
+void
+ConfigStorShow(void)
+{
+    ns3::GtkConfigStore config;
+    config.ConfigureDefaults ();
+    config.ConfigureAttributes ();
+}
+};
+
+
 int 
 main (int argc, char *argv[])
 {
   NS_LOG_UNCOND ("My first hello word!");
-  xiao::helper::ConfigStorShow();
+  xiao::ConfigStorShow();
   Simulator::Run ();
   Simulator::Destroy ();
 }

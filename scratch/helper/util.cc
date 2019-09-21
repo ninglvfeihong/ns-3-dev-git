@@ -8,3 +8,10 @@ ConfigStorShow(void)
     config.ConfigureDefaults ();
     config.ConfigureAttributes ();
 }
+
+
+int 
+main (int argc, char *argv[])
+{
+
+}
