@@ -23,6 +23,7 @@
 #include "ns3/internet-module.h"
 #include "ns3/yans-wifi-helper.h"
 #include "ns3/ssid.h"
+#include "ns3/config-store-module.h"
 
 // Default Network Topology
 //
@@ -180,6 +181,9 @@ main (int argc, char *argv[])
       csma.EnablePcap ("third", csmaDevices.Get (0), true);
     }
 
+GtkConfigStore config;
+config.ConfigureDefaults ();
+config.ConfigureAttributes ();
   Simulator::Run ();
   Simulator::Destroy ();
   return 0;

@@ -62,6 +62,7 @@ int main (int argc, char *argv[])
   // ConfigureAttributes() will work below.
   Config::RegisterRootNamespaceObject (b_obj);
   
+#define HAVE_LIBXML2
 #ifdef HAVE_LIBXML2
   // Output config store to XML format
   Config::SetDefault ("ns3::ConfigStore::Filename", StringValue ("output-attributes.xml"));

@@ -20,7 +20,7 @@
 #include "ns3/internet-module.h"
 #include "ns3/point-to-point-module.h"
 #include "ns3/applications-module.h"
-
+#include "ns3/config-store-module.h"
 using namespace ns3;
 
 NS_LOG_COMPONENT_DEFINE ("FifthScriptExample");
@@ -218,6 +218,17 @@ main (int argc, char *argv[])
   devices.Get (1)->TraceConnectWithoutContext ("PhyRxDrop", MakeCallback (&RxDrop));
 
   Simulator::Stop (Seconds (20));
+
+  Config::SetDefault ("ns3::ConfigStore::Filename", StringValue ("output-attributes.xml"));
+Config::SetDefault ("ns3::ConfigStore::FileFormat", StringValue ("Xml"));
+Config::SetDefault ("ns3::ConfigStore::Mode", StringValue ("Save"));
+ConfigStore outputConfig;
+outputConfig.ConfigureDefaults ();
+outputConfig.ConfigureAttributes ();
+
+GtkConfigStore config;
+config.ConfigureDefaults ();
+config.ConfigureAttributes ();
   Simulator::Run ();
   Simulator::Destroy ();
 
