@@ -15,6 +15,7 @@
  */
 
 #include "ns3/core-module.h"
+#include "helper/util.h"
 
 using namespace ns3;
 
@@ -24,7 +25,7 @@ int
 main (int argc, char *argv[])
 {
   NS_LOG_UNCOND ("My first hello word!");
-
+  xiao::helper::ConfigStorShow();
   Simulator::Run ();
   Simulator::Destroy ();
 }
