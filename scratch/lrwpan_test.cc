@@ -17,6 +17,8 @@
 #include "ns3/core-module.h"
 #include "ns3/config-store-module.h"
 #include <ns3/constant-position-mobility-model.h>
+#include "ns3/netanim-module.h"
+
 
 #include <ns3/lr-wpan-module.h>
 
@@ -33,11 +35,23 @@ ConfigStorShow(void)
     config.ConfigureDefaults ();
     config.ConfigureAttributes ();
 }
+
+void makeAnim()
+{
+  std::string animFile = "xiao-animation.xml" ;  // Name of file for animation
+  // Create the animation object and configure for specified output
+  AnimationInterface anim (animFile);
+  anim.EnablePacketMetadata (); // Optional
+  anim.EnableIpv4L3ProtocolCounters (Seconds (0), Seconds (10)); // Optional
+}
+
 //typedef Callback< bool, Ptr<NetDevice>, Ptr<const Packet>, uint16_t, const Address & > ReceiveCallback;
 bool
 NetDevCb(Ptr<NetDevice> netDev, Ptr<const Packet> p, uint16_t, const Address & addr)
 {
   NS_LOG_UNCOND("I received a packet!");
+  p->Print (std::cout);
+  std::cout <<"hahhfhdahfds"<< std::endl;
   return true;
 }
 
@@ -48,6 +62,7 @@ int
 main (int argc, char *argv[])
 {
   NS_LOG_UNCOND ("My first hello word!");
+  Packet::EnablePrinting ();
 
   ns3::NodeContainer lrPandNodes;
   lrPandNodes.Create(2);
@@ -82,7 +97,11 @@ main (int argc, char *argv[])
                       p,
                       addr,0);
   
+
+
+
   xiao::ConfigStorShow();
+  //xiao::makeAnim();
   Simulator::Run ();
   Simulator::Destroy ();
 }
