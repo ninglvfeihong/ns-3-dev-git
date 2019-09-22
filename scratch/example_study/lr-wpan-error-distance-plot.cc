@@ -84,7 +84,7 @@ int main (int argc, char *argv[])
   cmd.AddValue ("channelNumber", "channel number", channelNumber);
 
   cmd.Parse (argc, argv);
-
+//LogComponentEnable("LrWpanNetDevice", LOG_LEVEL_INFO);
   os << "Packet (MSDU) size = " << packetSize << " bytes; tx power = " << txPower << " dBm; channel = " << channelNumber;
 
   Gnuplot psrplot = Gnuplot ("802.15.4-psr-distance.eps");
@@ -101,12 +101,14 @@ int main (int argc, char *argv[])
   channel->AddPropagationLossModel (model);
   dev0->SetChannel (channel);
   dev1->SetChannel (channel);
+  Ptr<ConstantPositionMobilityModel> mob0 = CreateObject<ConstantPositionMobilityModel> ();
+  //dev0->GetPhy ()->SetMobility (mob0);
+  n0->AggregateObject(mob0);
+  Ptr<ConstantPositionMobilityModel> mob1 = CreateObject<ConstantPositionMobilityModel> ();
+  //dev1->GetPhy ()->SetMobility (mob1);
+  n1->AggregateObject(mob1);
   n0->AddDevice (dev0);
   n1->AddDevice (dev1);
-  Ptr<ConstantPositionMobilityModel> mob0 = CreateObject<ConstantPositionMobilityModel> ();
-  dev0->GetPhy ()->SetMobility (mob0);
-  Ptr<ConstantPositionMobilityModel> mob1 = CreateObject<ConstantPositionMobilityModel> ();
-  dev1->GetPhy ()->SetMobility (mob1);
 
   LrWpanSpectrumValueHelper svh;
   Ptr<SpectrumValue> psd = svh.CreateTxPowerSpectralDensity (txPower, channelNumber);
