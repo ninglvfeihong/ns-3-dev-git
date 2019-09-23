@@ -137,12 +137,48 @@ class Helper{
 bool
 NetDevCb(Ptr<NetDevice> netDev, Ptr<const Packet> p, uint16_t, const Address & addr)
 {
-  NS_LOG_UNCOND("I received a packet!");
+  static uint32_t counter =0;
+  counter ++;
+  NS_LOG_UNCOND(std::to_string(counter) + ": I received a packet!");
   p->Print (std::cout);
   std::cout << std::endl;
   return true;
 }
 
+void
+LrWpanSendSchedule(ns3::Ptr<ns3::Node> &sender,ns3::Ptr<ns3::Node> &receiver, 
+                  const ns3::Time &start, const ns3::Time &end, const ns3::Time &interval)
+{
+
+  Address addr(receiver->GetDevice(0)->GetAddress());
+  ns3::Time i;
+  uint32_t j=0;
+  for(i= start;  i<end; i += interval){
+    Ptr<Packet> p = Create<Packet>(20); //20 byte packet
+    Simulator::Schedule(i,&NetDevice::Send,
+                      sender->GetDevice(0),
+                      p,
+                      addr,0);
+    j++;
+  }
+  NS_LOG_UNCOND(std::to_string(j) + " lr-wpan packets scheduled");
+}
+void
+LrWpanSendScheduleBroadcast(ns3::Ptr<ns3::Node> &sender,
+                  const ns3::Time &start, const ns3::Time &end, const ns3::Time &interval)
+{
+  ns3::Time i;
+  uint32_t j=0;
+  for(i= start;  i<end; i += interval){
+    Ptr<Packet> p = Create<Packet>(20); //20 byte packet
+    Simulator::Schedule(i,&NetDevice::Send,
+                      sender->GetDevice(0),
+                      p,
+                      ns3::Mac16Address("ff:ff"),0); //broadcast without mac
+    j++;
+  }
+  NS_LOG_UNCOND(std::to_string(j) + " lr-wpan packets scheduled");
+}
 };
 
 
@@ -193,17 +229,9 @@ main (int argc, char *argv[])
   //set Netdevice receiver
   recver->GetDevice(0)->SetReceiveCallback(MakeCallback(&xiao::NetDevCb));
 
-  Ptr<Packet> p = Create<Packet>(20); //20 byte packet
-  Address addr(recver->GetDevice(0)->GetAddress());
-  Simulator::Schedule(MilliSeconds(100),&NetDevice::Send,
-                      sender->GetDevice(0),
-                      p,
-                      addr,0);
-  p = Create<Packet>(20);
-  Simulator::Schedule(MilliSeconds(200),&NetDevice::Send,
-                      sender->GetDevice(0),
-                      p,
-                      addr,0);
+  //stupid way scheduling packet seding
+  xiao::LrWpanSendScheduleBroadcast(sender, MilliSeconds(150),MilliSeconds(300),MilliSeconds(10));
+ 
   //std::cout << recver->GetDevice(0)->GetAddress() << " -- " << sender->GetDevice(0)->GetAddress() << std::endl;
   lrWpanHelper.EnablePcapAll("lrpwan_test",true);
   
@@ -271,18 +299,18 @@ main (int argc, char *argv[])
   //apIpv4->GetAddress(apIpv4->GetInterfaceForDevice(apDevices.Get(0)),0);
   UdpEchoClientHelper echoClient (wifiApIpv4Interfaces.GetAddress (0), 9);
   echoClient.SetAttribute ("MaxPackets", UintegerValue (1000));
-  echoClient.SetAttribute ("Interval", TimeValue (MilliSeconds (30)));
-  echoClient.SetAttribute ("PacketSize", UintegerValue (1024));
+  echoClient.SetAttribute ("Interval", TimeValue (MilliSeconds (3)));
+  echoClient.SetAttribute ("PacketSize", UintegerValue (500));
   ApplicationContainer clientApps = 
     echoClient.Install (wifiStaNodes.Get(0));
   clientApps.Start (MilliSeconds(10));
-  clientApps.Stop (Seconds (3.0));
+  clientApps.Stop (Seconds (0.4));
   
 
 
 
 
-  Simulator::Stop (MilliSeconds (300));
+  Simulator::Stop (MilliSeconds (450));
   xiao_helper.PlaceSpectrum(channel,Vector(5,1,0));
   xiao_helper.ConfigStorShow();
   xiao_helper.makeAnim();
