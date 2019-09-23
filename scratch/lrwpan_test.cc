@@ -58,6 +58,48 @@ class Helper{
     anim->EnablePacketMetadata (); // Optional
     anim->EnableIpv4L3ProtocolCounters (Seconds (0), Seconds (10)); // Optional
   }
+
+  std::shared_ptr<ns3::NodeContainer> pSpectrumAnalyzerNodes= 0;
+  //std::shared_ptr<ns3::SpectrumAnalyzerHelper> pSpectrumAnalyzerHelper= 0;
+  void 
+  PlaceSpectrum(const ns3::Ptr<ns3::SpectrumChannel> & channel, const Vector & position)
+  {
+
+  pSpectrumAnalyzerNodes = std::make_shared< NodeContainer >();
+  NodeContainer & spectrumAnalyzerNodes = *pSpectrumAnalyzerNodes.get();
+  //pSpectrumAnalyzerHelper  = std::make_shared< SpectrumAnalyzerHelper >();
+  //SpectrumAnalyzerHelper & spectrumAnalyzerHelper = *pSpectrumAnalyzerHelper.get();
+
+
+  /////////////////////////////////
+  // Configure spectrum analyzer
+  /////////////////////////////////
+  Ptr<ConstantPositionMobilityModel> spectrumAnalyzer_mob = CreateObject<ConstantPositionMobilityModel>();
+  spectrumAnalyzer_mob->SetPosition(position);
+  //NodeContainer spectrumAnalyzerNodes;
+  spectrumAnalyzerNodes.Create (1);
+  spectrumAnalyzerNodes.Get(0)->AggregateObject(spectrumAnalyzer_mob);
+  SpectrumAnalyzerHelper spectrumAnalyzerHelper;
+  spectrumAnalyzerHelper.SetChannel (channel);
+  spectrumAnalyzerHelper.SetRxSpectrumModel (SpectrumModelIsm2400MhzRes1Mhz);
+  spectrumAnalyzerHelper.SetPhyAttribute ("Resolution", TimeValue (MilliSeconds (1)));
+  spectrumAnalyzerHelper.SetPhyAttribute ("NoisePowerSpectralDensity", DoubleValue (1e-18));  // -150 dBm/Hz -90dBm/Mhz
+  spectrumAnalyzerHelper.EnableAsciiAll ("spectrum-analyzer-output");
+  NetDeviceContainer spectrumAnalyzerDevices = spectrumAnalyzerHelper.Install (spectrumAnalyzerNodes);
+ /*
+    you can get a nice plot of the output of SpectrumAnalyzer with this gnuplot script:
+
+    unset surface
+    set pm3d at s 
+    set palette
+    set key off
+    set view 50,50
+    set xlabel "time (ms)"
+    set ylabel "freq (MHz)"
+    set zlabel "PSD (dBW/Hz)" offset 15,0,0
+    splot "./spectrum-analyzer-output-2-0.tr" using ($1*1000.0):($2/1e6):(10*log10($3))
+  */
+  }
 };
 
 
@@ -85,7 +127,7 @@ main (int argc, char *argv[])
 
   ns3::NodeContainer lrPandNodes;
   lrPandNodes.Create(2);
-
+  
   LrWpanHelper lrWpanHelper(true);
   /*if (verbose)
   {
@@ -126,38 +168,9 @@ main (int argc, char *argv[])
                       addr,0);
   std::cout << recver->GetDevice(0)->GetAddress() << " -- " << sender->GetDevice(0)->GetAddress() << std::endl;
   lrWpanHelper.EnablePcapAll("lrpwan_test",true);
+  
 
- /////////////////////////////////
-  // Configure spectrum analyzer
-  /////////////////////////////////
-
-
-  Ptr<ConstantPositionMobilityModel> spectrumAnalyzer_mob = CreateObject<ConstantPositionMobilityModel>();
-  spectrumAnalyzer_mob->SetPosition(Vector(5,0,0));
-  NodeContainer spectrumAnalyzerNodes;
-  spectrumAnalyzerNodes.Create (1);
-  spectrumAnalyzerNodes.Get(0)->AggregateObject(spectrumAnalyzer_mob);
-  SpectrumAnalyzerHelper spectrumAnalyzerHelper;
-  spectrumAnalyzerHelper.SetChannel (lrWpanHelper.GetChannel());
-  spectrumAnalyzerHelper.SetRxSpectrumModel (SpectrumModelIsm2400MhzRes1Mhz);
-  spectrumAnalyzerHelper.SetPhyAttribute ("Resolution", TimeValue (MilliSeconds (1)));
-  spectrumAnalyzerHelper.SetPhyAttribute ("NoisePowerSpectralDensity", DoubleValue (1e-18));  // -150 dBm/Hz -90dBm/Mhz
-  spectrumAnalyzerHelper.EnableAsciiAll ("spectrum-analyzer-output");
-  NetDeviceContainer spectrumAnalyzerDevices = spectrumAnalyzerHelper.Install (spectrumAnalyzerNodes);
-
- /*
-    you can get a nice plot of the output of SpectrumAnalyzer with this gnuplot script:
-
-    unset surface
-    set pm3d at s 
-    set palette
-    set key off
-    set view 50,50
-    set xlabel "time (ms)"
-    set ylabel "freq (MHz)"
-    set zlabel "PSD (dBW/Hz)" offset 15,0,0
-    splot "./spectrum-analyzer-output-2-0.tr" using ($1*1000.0):($2/1e6):(10*log10($3))
-  */
+  xiao_helper.PlaceSpectrum(lrWpanHelper.GetChannel(),Vector(5,0,0));
 
   Simulator::Stop (Seconds (3));
   //xiao_helper.ConfigStorShow();
