@@ -180,6 +180,11 @@ main (int argc, char *argv[])
   //Create and install LrWpanNetDevices into nodes in nodes container by using LrWpanHelper
   ns3::NetDeviceContainer lrDevices = lrWpanHelper.Install(lrPandNodes);
 
+  LrWpanPhyPibAttributes lrWpanPibAttribute;
+  lrWpanPibAttribute.phyCurrentChannel = 17;
+  lrDevices.Get(0)->GetObject<LrWpanNetDevice>()->GetPhy()->PlmeSetAttributeRequest(ns3::LrWpanPibAttributeIdentifier::phyCurrentChannel,&lrWpanPibAttribute);
+  lrDevices.Get(1)->GetObject<LrWpanNetDevice>()->GetPhy()->PlmeSetAttributeRequest(ns3::LrWpanPibAttributeIdentifier::phyCurrentChannel,&lrWpanPibAttribute);
+
   //setup MAC addres
   lrDevices.Get(0)->SetAddress(ns3::Mac16Address("00:00"));
   lrDevices.Get(1)->SetAddress(ns3::Mac16Address("00:01"));
