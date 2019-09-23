@@ -18,11 +18,25 @@
 #include "ns3/config-store-module.h"
 #include <ns3/constant-position-mobility-model.h>
 #include "ns3/netanim-module.h"
+
+
 #include <ns3/spectrum-analyzer-helper.h>
 #include <ns3/spectrum-model-ism2400MHz-res1MHz.h>
 
-
+//lr-pan
 #include <ns3/lr-wpan-module.h>
+
+//wifi
+#include <ns3/spectrum-wifi-helper.h>
+#include "ns3/ssid.h"
+
+//internet
+#include "ns3/internet-module.h"
+
+#include "ns3/applications-module.h"
+
+#include "ns3/mobility-module.h"
+
 
 #include <memory>
 using namespace ns3;
@@ -106,7 +120,7 @@ class Helper{
     set xlabel "time (ms)"
     set ylabel "freq (MHz)"
     set zlabel "PSD (dBW/Hz)" offset 15,0,0
-    splot "./spectrum-analyzer-output-2-0.tr" using ($1*1000.0):($2/1e6):(10*log10($3))
+    splot "./spectrum-analyzer-output-4-0.tr" using ($1*1000.0):($2/1e6):(10*log10($3))
 
 
     set xrange [90 to 110] 
@@ -141,6 +155,9 @@ main (int argc, char *argv[])
   Packet::EnablePrinting ();
   Packet::EnableChecking();
 
+  /////////////////////////////////
+  // Configure LR-WPAN
+  /////////////////////////////////
   ns3::NodeContainer lrPandNodes;
   lrPandNodes.Create(2);
   
@@ -182,14 +199,87 @@ main (int argc, char *argv[])
                       sender->GetDevice(0),
                       p,
                       addr,0);
-  std::cout << recver->GetDevice(0)->GetAddress() << " -- " << sender->GetDevice(0)->GetAddress() << std::endl;
+  //std::cout << recver->GetDevice(0)->GetAddress() << " -- " << sender->GetDevice(0)->GetAddress() << std::endl;
   lrWpanHelper.EnablePcapAll("lrpwan_test",true);
   
 
+  /////////////////////////////////
+  // Configure WiFi -- prepare
+  /////////////////////////////////
+
+  ns3::Ptr<ns3::SpectrumChannel> channel = lrWpanHelper.GetChannel();
+
+
+  /////////////////////////////////
+  // Configure WiFi
+  /////////////////////////////////
+  NodeContainer wifiNodes;
+  wifiNodes.Create (2);
+  NodeContainer wifiApNode = wifiNodes.Get (0);
+  NodeContainer wifiStaNodes = wifiNodes.Get(1);
+  //set nodes location
+  ns3::Ptr<ListPositionAllocator> wifiLocationAllocator = ns3::CreateObject<ListPositionAllocator>();
+  wifiLocationAllocator->Add(ns3::Vector(0,2,0));     //wifi AP
+  wifiLocationAllocator->Add(ns3::Vector(10,2,0));    //wifi Station
+  MobilityHelper mobility;
+  mobility.SetPositionAllocator(wifiLocationAllocator);
+  mobility.Install(wifiNodes);
+
+
+  ns3::SpectrumWifiPhyHelper wifiPhy = ns3::SpectrumWifiPhyHelper::Default();
+  wifiPhy.SetChannel(channel);
+  wifiPhy.Set("ChannelNumber",UintegerValue(6));
+
+  WifiHelper wifi;
+  wifi.SetRemoteStationManager("ns3::AarfWifiManager");
+  
+  //config station nodes
+  WifiMacHelper mac;
+  Ssid ssid = Ssid ("ns-3-ssid");
+  mac.SetType ("ns3::StaWifiMac",
+               "Ssid", SsidValue (ssid),
+               "ActiveProbing", BooleanValue (false));
+  NetDeviceContainer staDevices = wifi.Install (wifiPhy, mac, wifiStaNodes);
+  //config ap node
+  mac.SetType ("ns3::ApWifiMac",
+               "Ssid", SsidValue (ssid));
+  NetDeviceContainer apDevices = wifi.Install (wifiPhy, mac, wifiApNode);
+
+  //intall internet statck
+  InternetStackHelper internetStackHelper;
+  internetStackHelper .Install(wifiNodes);
+
+  Ipv4AddressHelper addressHelper;
+  addressHelper.SetBase ("192.168.1.0", "255.255.255.0");
+  addressHelper.Assign (staDevices);
+  ns3::Ipv4InterfaceContainer wifiApIpv4Interfaces =  addressHelper.Assign (apDevices);
+
+  //install application
+  UdpEchoServerHelper echoServer (9);
+
+  ApplicationContainer echoServerApp = echoServer.Install(wifiApNode);
+  echoServerApp.Start(MilliSeconds(5));
+  echoServerApp.Stop (Seconds (3.0));
+
+  //Ptr<ns3::Ipv4> apIpv4 = wifiApNode.Get(0)->GetObject<ns3::Ipv4>();
+  //apIpv4->GetInterfaceForDevice(apDevices.Get(0));
+  //apIpv4->GetAddress(apIpv4->GetInterfaceForDevice(apDevices.Get(0)),0);
+  UdpEchoClientHelper echoClient (wifiApIpv4Interfaces.GetAddress (0), 9);
+  echoClient.SetAttribute ("MaxPackets", UintegerValue (1000));
+  echoClient.SetAttribute ("Interval", TimeValue (MilliSeconds (30)));
+  echoClient.SetAttribute ("PacketSize", UintegerValue (1024));
+  ApplicationContainer clientApps = 
+    echoClient.Install (wifiStaNodes.Get(0));
+  clientApps.Start (MilliSeconds(10));
+  clientApps.Stop (Seconds (3.0));
+  
+
+
+
 
   Simulator::Stop (MilliSeconds (300));
-  //xiao_helper.PlaceSpectrum(lrWpanHelper.GetChannel(),Vector(5,0,0));
-  //xiao_helper.ConfigStorShow();
+  xiao_helper.PlaceSpectrum(channel,Vector(5,1,0));
+  xiao_helper.ConfigStorShow();
   xiao_helper.makeAnim();
   Simulator::Run ();
   Simulator::Destroy ();
