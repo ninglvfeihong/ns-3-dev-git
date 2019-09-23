@@ -299,7 +299,7 @@ main (int argc, char *argv[])
   //apIpv4->GetAddress(apIpv4->GetInterfaceForDevice(apDevices.Get(0)),0);
   UdpEchoClientHelper echoClient (wifiApIpv4Interfaces.GetAddress (0), 9);
   echoClient.SetAttribute ("MaxPackets", UintegerValue (1000));
-  echoClient.SetAttribute ("Interval", TimeValue (MicroSeconds (200)));
+  echoClient.SetAttribute ("Interval", TimeValue (MilliSeconds (3)));
   echoClient.SetAttribute ("PacketSize", UintegerValue (500));
   ApplicationContainer clientApps = 
     echoClient.Install (wifiStaNodes.Get(0));
@@ -312,7 +312,7 @@ main (int argc, char *argv[])
 
   Simulator::Stop (MilliSeconds (450));
   xiao_helper.PlaceSpectrum(channel,Vector(5,1,0));
-  xiao_helper.ConfigStorShow();
+  //xiao_helper.ConfigStorShow();
   xiao_helper.makeAnim();
   Simulator::Run ();
   Simulator::Destroy ();
