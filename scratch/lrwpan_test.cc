@@ -101,7 +101,11 @@ main (int argc, char *argv[])
   recver_mob->SetPosition(Vector(10,0,0));
 
   //Create and install LrWpanNetDevices into nodes in nodes container by using LrWpanHelper
-  lrWpanHelper.Install(lrPandNodes);
+  ns3::NetDeviceContainer lrDevices = lrWpanHelper.Install(lrPandNodes);
+
+  //setup MAC addres
+  lrDevices.Get(0)->SetAddress(ns3::Mac16Address("00:00"));
+  lrDevices.Get(1)->SetAddress(ns3::Mac16Address("00:01"));
   //lrWpanHelper.AssociateToPan()
 
   //set Netdevice receiver
