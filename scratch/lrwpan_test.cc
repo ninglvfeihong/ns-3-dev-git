@@ -36,13 +36,13 @@ ConfigStorShow(void)
     config.ConfigureAttributes ();
 }
 
-void makeAnim()
+void MakeAnim(AnimationInterface & anim)
 {
-  std::string animFile = "xiao-animation.xml" ;  // Name of file for animation
+  //std::string animFile = "xiao-animation.xml" ;  // Name of file for animation
   // Create the animation object and configure for specified output
-  AnimationInterface anim (animFile);
+  //AnimationInterface anim (animFile);
   anim.EnablePacketMetadata (); // Optional
-  anim.EnableIpv4L3ProtocolCounters (Seconds (0), Seconds (10)); // Optional
+  //anim.EnableIpv4L3ProtocolCounters (Seconds (0), Seconds (10)); // Optional
 }
 
 //typedef Callback< bool, Ptr<NetDevice>, Ptr<const Packet>, uint16_t, const Address & > ReceiveCallback;
@@ -96,12 +96,10 @@ main (int argc, char *argv[])
                       sender->GetDevice(0),
                       p,
                       addr,0);
-  
 
-
-
-  xiao::ConfigStorShow();
-  //xiao::makeAnim();
+  //xiao::ConfigStorShow();
+  AnimationInterface anim("xiao-animation.xml");
+  xiao::MakeAnim(anim);
   Simulator::Run ();
   Simulator::Destroy ();
 }
