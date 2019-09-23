@@ -65,7 +65,7 @@ NetDevCb(Ptr<NetDevice> netDev, Ptr<const Packet> p, uint16_t, const Address & a
 {
   NS_LOG_UNCOND("I received a packet!");
   p->Print (std::cout);
-  std::cout <<"hahhfhdahfds"<< std::endl;
+  std::cout << std::endl;
   return true;
 }
 
@@ -79,6 +79,7 @@ main (int argc, char *argv[])
   xiao::Helper xiao_helper;
 
   Packet::EnablePrinting ();
+  Packet::EnableChecking();
 
   ns3::NodeContainer lrPandNodes;
   lrPandNodes.Create(2);
@@ -112,8 +113,13 @@ main (int argc, char *argv[])
                       sender->GetDevice(0),
                       p,
                       addr,0);
-  
-
+  p = Create<Packet>(20);
+  Simulator::Schedule(Seconds(2),&NetDevice::Send,
+                      sender->GetDevice(0),
+                      p,
+                      addr,0);
+  std::cout << recver->GetDevice(0)->GetAddress() << " -- " << sender->GetDevice(0)->GetAddress() << std::endl;
+  lrWpanHelper.EnablePcapAll("lrpwan_test",true);
 
 
   //xiao_helper.ConfigStorShow();
