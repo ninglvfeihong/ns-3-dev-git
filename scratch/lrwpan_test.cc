@@ -186,9 +186,9 @@ main (int argc, char *argv[])
   lrWpanHelper.EnablePcapAll("lrpwan_test",true);
   
 
-  xiao_helper.PlaceSpectrum(lrWpanHelper.GetChannel(),Vector(5,0,0));
 
   Simulator::Stop (MilliSeconds (300));
+  //xiao_helper.PlaceSpectrum(lrWpanHelper.GetChannel(),Vector(5,0,0));
   //xiao_helper.ConfigStorShow();
   xiao_helper.makeAnim();
   Simulator::Run ();
