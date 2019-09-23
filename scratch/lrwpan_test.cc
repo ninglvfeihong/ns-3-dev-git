@@ -22,28 +22,42 @@
 
 #include <ns3/lr-wpan-module.h>
 
+#include <memory>
 using namespace ns3;
 
 NS_LOG_COMPONENT_DEFINE ("LrWpanTestByXiao");
 
 namespace xiao
 {
-void
-ConfigStorShow(void)
-{
-    ns3::GtkConfigStore config;
-    config.ConfigureDefaults ();
-    config.ConfigureAttributes ();
-}
+class Helper{
+  std::shared_ptr<ns3::AnimationInterface> anim = 0;
+  std::shared_ptr<ns3::GtkConfigStore> config= 0;
+  public:
 
-void MakeAnim(AnimationInterface & anim)
-{
-  //std::string animFile = "xiao-animation.xml" ;  // Name of file for animation
-  // Create the animation object and configure for specified output
-  //AnimationInterface anim (animFile);
-  anim.EnablePacketMetadata (); // Optional
-  //anim.EnableIpv4L3ProtocolCounters (Seconds (0), Seconds (10)); // Optional
-}
+  void
+  ConfigStorShow(void)
+  {
+    //ns3::GtkConfigStore config;
+    //config.ConfigureDefaults ();
+    //config.ConfigureAttributes ();
+    config = std::make_shared<ns3::GtkConfigStore>();
+    config->ConfigureDefaults ();
+    config->ConfigureAttributes ();
+  }
+
+  void makeAnim()
+  {
+    std::string animFile = "xiao-animation.xml" ;  // Name of file for animation
+    // Create the animation object and configure for specified output
+    //AnimationInterface anim (animFile);
+    // anim.EnablePacketMetadata (); // Optional
+    // anim.EnableIpv4L3ProtocolCounters (Seconds (0), Seconds (10)); // Optional
+    anim = std::make_shared<ns3::AnimationInterface>(animFile);
+    anim->EnablePacketMetadata (); // Optional
+    anim->EnableIpv4L3ProtocolCounters (Seconds (0), Seconds (10)); // Optional
+  }
+};
+
 
 //typedef Callback< bool, Ptr<NetDevice>, Ptr<const Packet>, uint16_t, const Address & > ReceiveCallback;
 bool
@@ -62,6 +76,8 @@ int
 main (int argc, char *argv[])
 {
   NS_LOG_UNCOND ("My first hello word!");
+  xiao::Helper xiao_helper;
+
   Packet::EnablePrinting ();
 
   ns3::NodeContainer lrPandNodes;
@@ -96,10 +112,12 @@ main (int argc, char *argv[])
                       sender->GetDevice(0),
                       p,
                       addr,0);
+  
 
-  //xiao::ConfigStorShow();
-  AnimationInterface anim("xiao-animation.xml");
-  xiao::MakeAnim(anim);
+
+
+  //xiao_helper.ConfigStorShow();
+  xiao_helper.makeAnim();
   Simulator::Run ();
   Simulator::Destroy ();
 }
