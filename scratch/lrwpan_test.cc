@@ -82,7 +82,7 @@ class Helper{
   SpectrumAnalyzerHelper spectrumAnalyzerHelper;
   spectrumAnalyzerHelper.SetChannel (channel);
   spectrumAnalyzerHelper.SetRxSpectrumModel (SpectrumModelIsm2400MhzRes1Mhz);
-  spectrumAnalyzerHelper.SetPhyAttribute ("Resolution", TimeValue (MilliSeconds (1)));
+  spectrumAnalyzerHelper.SetPhyAttribute ("Resolution", TimeValue (ns3::MicroSeconds (100)));
   spectrumAnalyzerHelper.SetPhyAttribute ("NoisePowerSpectralDensity", DoubleValue (1e-18));  // -150 dBm/Hz -90dBm/Mhz
   spectrumAnalyzerHelper.EnableAsciiAll ("spectrum-analyzer-output");
   NetDeviceContainer spectrumAnalyzerDevices = spectrumAnalyzerHelper.Install (spectrumAnalyzerNodes);
@@ -99,6 +99,22 @@ class Helper{
     set zlabel "PSD (dBW/Hz)" offset 15,0,0
     splot "./spectrum-analyzer-output-2-0.tr" using ($1*1000.0):($2/1e6):(10*log10($3))
   */
+ /*
+    set pm3d map
+    set palette
+    set key off
+    set xlabel "time (ms)"
+    set ylabel "freq (MHz)"
+    set zlabel "PSD (dBW/Hz)" offset 15,0,0
+    splot "./spectrum-analyzer-output-2-0.tr" using ($1*1000.0):($2/1e6):(10*log10($3))
+
+
+    set xrange [90 to 110] 
+    set yrange [2400 to 2420] 
+    replot
+  ref:http://valavanis-research.blogspot.com/2012/06/plotting-spectral-maps-or-spectrograms.html
+
+ */
   }
 };
 
@@ -157,12 +173,12 @@ main (int argc, char *argv[])
 
   Ptr<Packet> p = Create<Packet>(20); //20 byte packet
   Address addr(recver->GetDevice(0)->GetAddress());
-  Simulator::Schedule(Seconds(1),&NetDevice::Send,
+  Simulator::Schedule(MilliSeconds(100),&NetDevice::Send,
                       sender->GetDevice(0),
                       p,
                       addr,0);
   p = Create<Packet>(20);
-  Simulator::Schedule(Seconds(2),&NetDevice::Send,
+  Simulator::Schedule(MilliSeconds(200),&NetDevice::Send,
                       sender->GetDevice(0),
                       p,
                       addr,0);
@@ -172,7 +188,7 @@ main (int argc, char *argv[])
 
   xiao_helper.PlaceSpectrum(lrWpanHelper.GetChannel(),Vector(5,0,0));
 
-  Simulator::Stop (Seconds (3));
+  Simulator::Stop (MilliSeconds (300));
   //xiao_helper.ConfigStorShow();
   xiao_helper.makeAnim();
   Simulator::Run ();
