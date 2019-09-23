@@ -265,6 +265,7 @@ main (int argc, char *argv[])
 
   WifiHelper wifi;
   wifi.SetRemoteStationManager("ns3::AarfWifiManager");
+  //wifi.SetRemoteStationManager("ns3::ConstantRateWifiManager","DataMode", StringValue ("OfdmRate27MbpsBW10MHz"))
   
   //config station nodes
   WifiMacHelper mac;
