@@ -75,7 +75,7 @@ int main (int argc, char *argv[])
   int maxPackets = 1000;
   int packetSize = 20;
   double txPower = 0;
-  uint32_t channelNumber = 11;
+  uint32_t channelNumber = 17;
 
   CommandLine cmd;
 
@@ -107,10 +107,15 @@ int main (int argc, char *argv[])
   dev0->GetPhy ()->SetMobility (mob0);
   Ptr<ConstantPositionMobilityModel> mob1 = CreateObject<ConstantPositionMobilityModel> ();
   dev1->GetPhy ()->SetMobility (mob1);
+  //set channel
+  LrWpanPhyPibAttributes lrWpanPibAttribute;
+  lrWpanPibAttribute.phyCurrentChannel = channelNumber;
+  dev0->GetPhy ()->PlmeSetAttributeRequest(ns3::LrWpanPibAttributeIdentifier::phyCurrentChannel,&lrWpanPibAttribute);
+  dev1->GetPhy ()->PlmeSetAttributeRequest(ns3::LrWpanPibAttributeIdentifier::phyCurrentChannel,&lrWpanPibAttribute);
 
-  LrWpanSpectrumValueHelper svh;
-  Ptr<SpectrumValue> psd = svh.CreateTxPowerSpectralDensity (txPower, channelNumber);
-  dev0->GetPhy ()->SetTxPowerSpectralDensity (psd);
+  // LrWpanSpectrumValueHelper svh;
+  // Ptr<SpectrumValue> psd = svh.CreateTxPowerSpectralDensity (txPower, channelNumber);
+  // dev0->GetPhy ()->SetTxPowerSpectralDensity (psd);
 
   McpsDataIndicationCallback cb0;
   cb0 = MakeCallback (&LrWpanErrorDistanceCallback);
