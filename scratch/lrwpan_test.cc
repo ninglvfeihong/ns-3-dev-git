@@ -230,7 +230,7 @@ main (int argc, char *argv[])
   recver->GetDevice(0)->SetReceiveCallback(MakeCallback(&xiao::NetDevCb));
 
   //stupid way scheduling packet seding
-  xiao::LrWpanSendScheduleBroadcast(sender, MilliSeconds(150),MilliSeconds(300),MilliSeconds(10));
+  xiao::LrWpanSendScheduleBroadcast(sender, MilliSeconds(150),MilliSeconds(300),MilliSeconds(1));
  
   //std::cout << recver->GetDevice(0)->GetAddress() << " -- " << sender->GetDevice(0)->GetAddress() << std::endl;
   lrWpanHelper.EnablePcapAll("lrpwan_test",true);
@@ -311,7 +311,7 @@ main (int argc, char *argv[])
 
 
 
-  Simulator::Stop (MilliSeconds (450));
+  Simulator::Stop (MilliSeconds (550));
   xiao_helper.PlaceSpectrum(channel,Vector(5,1,0));
   //xiao_helper.ConfigStorShow();
   xiao_helper.makeAnim();
