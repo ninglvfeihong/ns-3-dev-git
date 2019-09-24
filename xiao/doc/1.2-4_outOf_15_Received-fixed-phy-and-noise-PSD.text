@@ -1,0 +1,29 @@
+Waf: Leaving directory `/home/xiao/NS/ns-3-dev-git/build'
+Build commands will be stored in build/compile_commands.json
+'build' finished successfully (11.131s)
+My first hello word!
+15 lr-wpan packets scheduled
+1:receive droped
+2:receive droped
+3:receive droped
+1: I received a packet!
+Payload (size=20)
+4:receive successed
+5:receive droped
+6:receive droped
+7:receive droped
+8:receive droped
+9:receive droped
+2: I received a packet!
+Payload (size=20)
+10:receive successed
+11:receive droped
+12:receive droped
+3: I received a packet!
+Payload (size=20)
+13:receive successed
+14:receive droped
+4: I received a packet!
+Payload (size=20)
+15:receive successed
+
