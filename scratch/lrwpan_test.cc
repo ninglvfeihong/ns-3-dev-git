@@ -181,6 +181,33 @@ LrWpanSendScheduleBroadcast(ns3::Ptr<ns3::Node> &sender,
   }
   NS_LOG_UNCOND(std::to_string(j) + " lr-wpan packets scheduled");
 }
+
+
+  //random variable
+  ns3::Ptr<ns3::UniformRandomVariable> rand =0;
+void
+LrWpanSendScheduleBroadcastRandom(ns3::Ptr<ns3::Node> &sender,
+                  const ns3::Time &start, const ns3::Time &end, const ns3::Time &maxInterval)
+{
+  ns3::Time i;
+  uint32_t j=0;
+  if(rand == 0){
+    rand = CreateObject<UniformRandomVariable> ();
+    rand->SetAttribute ("Min", DoubleValue (0.0));
+    rand->SetAttribute ("Max", DoubleValue (1.0));
+  }
+  ns3::Time interval = maxInterval * (rand->GetValue() * 1e6)/1e6;
+  for(i= start;  i<end; i += interval){
+    Ptr<Packet> p = Create<Packet>(20); //20 byte packet
+    Simulator::Schedule(i,&NetDevice::Send,
+                      sender->GetDevice(0),
+                      p,
+                      ns3::Mac16Address("ff:ff"),0); //broadcast without mac
+    j++;
+    interval = maxInterval * (rand->GetValue() * 1e6)/1e6;
+  }
+  NS_LOG_UNCOND(std::to_string(j) + " lr-wpan packets scheduled");
+}
 };
 
 
@@ -233,7 +260,8 @@ main (int argc, char *argv[])
 
   //stupid way scheduling packet seding
   //xiao::LrWpanSendScheduleBroadcast(sender, MilliSeconds(150),MilliSeconds(300),MilliSeconds(10));
-  xiao::LrWpanSendSchedule(sender,recver, MilliSeconds(150),MilliSeconds(300),MilliSeconds(10));
+  xiao::LrWpanSendScheduleBroadcastRandom(sender, MilliSeconds(150),MilliSeconds(300),MilliSeconds(10));
+  //xiao::LrWpanSendSchedule(sender,recver, MilliSeconds(150),MilliSeconds(300),MilliSeconds(10));
  
   //std::cout << recver->GetDevice(0)->GetAddress() << " -- " << sender->GetDevice(0)->GetAddress() << std::endl;
   lrWpanHelper.EnablePcapAll("lrpwan_test",true);
