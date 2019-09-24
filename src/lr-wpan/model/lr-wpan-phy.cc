@@ -455,10 +455,12 @@ LrWpanPhy::EndRx (Ptr<SpectrumSignalParameters> par)
     }
 
   Ptr<LrWpanSpectrumSignalParameters> currentRxParams = m_currentRxPacket.first;
-  if (currentRxParams == params)
-    {
-      CheckInterference ();
-    }
+  // if (currentRxParams == params)
+  //   {
+  //     CheckInterference ();
+  //   }
+
+  CheckInterference (); // interference should always be checked.
 
   // Update the interference.
   m_signal->RemoveSignal (par->psd);
