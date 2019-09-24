@@ -113,12 +113,16 @@ LrWpanSpectrumValueHelper::CreateNoisePowerSpectralDensity (uint32_t channel)
   double noisePowerDensity = m_noiseFactor * Nt;
 
   NS_ASSERT_MSG ((channel >= 11 && channel <= 26), "Invalid channel numbers");
+  for (channel=11;channel<=26;channel++)
+  {
+    (*noisePsd)[2405 + 5 * (channel - 11) - 2400 - 2] = noisePowerDensity;
+    (*noisePsd)[2405 + 5 * (channel - 11) - 2400 - 1] = noisePowerDensity;
+    (*noisePsd)[2405 + 5 * (channel - 11) - 2400] = noisePowerDensity;
+    (*noisePsd)[2405 + 5 * (channel - 11) - 2400 + 1] = noisePowerDensity;
+    (*noisePsd)[2405 + 5 * (channel - 11) - 2400 + 2] = noisePowerDensity;
+  }
 
-  (*noisePsd)[2405 + 5 * (channel - 11) - 2400 - 2] = noisePowerDensity;
-  (*noisePsd)[2405 + 5 * (channel - 11) - 2400 - 1] = noisePowerDensity;
-  (*noisePsd)[2405 + 5 * (channel - 11) - 2400] = noisePowerDensity;
-  (*noisePsd)[2405 + 5 * (channel - 11) - 2400 + 1] = noisePowerDensity;
-  (*noisePsd)[2405 + 5 * (channel - 11) - 2400 + 2] = noisePowerDensity;
+  
 
   return noisePsd;
 }
