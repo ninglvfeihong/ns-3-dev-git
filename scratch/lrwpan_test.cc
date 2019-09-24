@@ -128,6 +128,8 @@ class Helper{
     replot
   ref:http://valavanis-research.blogspot.com/2012/06/plotting-spectral-maps-or-spectrograms.html
 
+  set grid ztics lc rgb "#bbbbbb" lw 1 lt 0
+
  */
   }
 };
@@ -230,7 +232,7 @@ main (int argc, char *argv[])
   recver->GetDevice(0)->SetReceiveCallback(MakeCallback(&xiao::NetDevCb));
 
   //stupid way scheduling packet seding
-  xiao::LrWpanSendScheduleBroadcast(sender, MilliSeconds(150),MilliSeconds(300),MilliSeconds(1));
+  xiao::LrWpanSendScheduleBroadcast(sender, MilliSeconds(150),MilliSeconds(300),MilliSeconds(10));
  
   //std::cout << recver->GetDevice(0)->GetAddress() << " -- " << sender->GetDevice(0)->GetAddress() << std::endl;
   lrWpanHelper.EnablePcapAll("lrpwan_test",true);
@@ -311,7 +313,7 @@ main (int argc, char *argv[])
 
 
 
-  Simulator::Stop (MilliSeconds (550));
+  Simulator::Stop (MilliSeconds (450));
   xiao_helper.PlaceSpectrum(channel,Vector(5,1,0));
   //xiao_helper.ConfigStorShow();
   xiao_helper.makeAnim();
