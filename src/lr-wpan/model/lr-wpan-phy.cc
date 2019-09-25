@@ -116,6 +116,11 @@ LrWpanPhy::GetTypeId (void)
                      "dropped by the device during reception",
                      MakeTraceSourceAccessor (&LrWpanPhy::m_phyRxDropTrace),
                      "ns3::Packet::TracedCallback")
+    .AddTraceSource ("PhyRx",
+                     "Trace source indicating a packet has been "
+                     "successfully received by the device during reception",
+                     MakeTraceSourceAccessor (&LrWpanPhy::m_phyRxTrace),
+                     "ns3::Packet::TracedCallback")
   ;
   return tid;
 }
@@ -486,6 +491,7 @@ LrWpanPhy::EndRx (Ptr<SpectrumSignalParameters> par)
       if (!m_currentRxPacket.second)
         {
           // The packet was successfully received, push it up the stack.
+          m_phyRxTrace(currentPacket);
           if (!m_pdDataIndicationCallback.IsNull ())
             {
               m_pdDataIndicationCallback (currentPacket->GetSize (), currentPacket, tag.Get ());

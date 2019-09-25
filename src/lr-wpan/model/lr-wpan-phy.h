@@ -664,6 +664,13 @@ private:
   TracedCallback<Ptr<const Packet> > m_phyRxDropTrace;
 
   /**
+   * The trace source fired when the phy layer fuccessfully completes a packet it has received.
+   *
+   * \see class CallBackTraceSource
+   */
+  TracedCallback<Ptr<const Packet> > m_phyRxTrace;
+
+  /**
    * The trace source fired when the phy layer changes the transceiver state.
    *
    * \see class CallBackTraceSource
