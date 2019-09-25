@@ -448,7 +448,6 @@ void
 LrWpanPhy::EndRx (Ptr<SpectrumSignalParameters> par)
 {
   NS_LOG_FUNCTION (this);
-  static uint32_t ccounter =0;
 
   Ptr<LrWpanSpectrumSignalParameters> params = DynamicCast<LrWpanSpectrumSignalParameters> (par);
 
@@ -496,14 +495,10 @@ LrWpanPhy::EndRx (Ptr<SpectrumSignalParameters> par)
             {
               m_pdDataIndicationCallback (currentPacket->GetSize (), currentPacket, tag.Get ());
             }
-            ccounter++;
-            NS_LOG_UNCOND(std::to_string(ccounter) + ":receive successed");
         }
       else
         {
           // The packet was destroyed, drop it.
-            ccounter++;
-            NS_LOG_UNCOND(std::to_string(ccounter) + ":receive droped");
           m_phyRxDropTrace (currentPacket);
         }
       Ptr<LrWpanSpectrumSignalParameters> none = 0;

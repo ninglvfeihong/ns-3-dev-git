@@ -132,6 +132,63 @@ class Helper{
 
  */
   }
+
+
+  //LrWpanShowTraceRxDrop
+  uint64_t lrWpanShowMacTraceRxDropCounter =0;
+  void 
+  _LrWpanShowMacTraceRxDropRx(ns3::Ptr<const ns3::Packet> p)
+  {
+    lrWpanShowMacTraceRxDropCounter++;
+    NS_LOG_UNCOND(std::to_string(ns3::Now().GetSeconds()) + ":Mac Received:" + std::to_string(lrWpanShowMacTraceRxDropCounter));
+  }
+  void 
+  _LrWpanShowMacTraceRxDropRxDrop(ns3::Ptr<const ns3::Packet> p)
+  {
+    lrWpanShowMacTraceRxDropCounter++;
+    NS_LOG_UNCOND(std::to_string(ns3::Now().GetSeconds()) + ":Mac Droped:" + std::to_string(lrWpanShowMacTraceRxDropCounter));
+  }
+  void 
+  EnableLrWpanShowMacTraceRxDrop(Ptr<NetDevice> netDev)
+  {
+    netDev->GetObject<LrWpanNetDevice>()->GetMac()->TraceConnectWithoutContext
+      ("MacRx",ns3::MakeCallback(&Helper::_LrWpanShowMacTraceRxDropRx, this));
+    netDev->GetObject<LrWpanNetDevice>()->GetMac()->TraceConnectWithoutContext
+      ("MacRxDrop",ns3::MakeCallback(&Helper::_LrWpanShowMacTraceRxDropRxDrop, this));
+  }
+  
+  //LrWpanShowPhyTraceRxDrop
+  uint64_t lrWpanShowPhyTraceRxDropCounterDrop =0;
+  uint64_t lrWpanShowPhyTraceRxDropCounterRx =0;
+
+  void 
+  _LrWpanShowPhyTraceRxDropRx(ns3::Ptr<const ns3::Packet> p)
+  {
+    lrWpanShowPhyTraceRxDropCounterRx++;
+    NS_LOG_UNCOND(std::to_string(ns3::Now().GetSeconds()) + ":Phy Received(n/id):" 
+              + std::to_string(lrWpanShowPhyTraceRxDropCounterRx)
+              + "/" + std::to_string(lrWpanShowPhyTraceRxDropCounterRx+lrWpanShowPhyTraceRxDropCounterDrop));
+  }
+  void 
+  _LrWpanShowPhyTraceRxDropRxDrop(ns3::Ptr<const ns3::Packet> p)
+  {
+    lrWpanShowPhyTraceRxDropCounterDrop++;
+    NS_LOG_UNCOND(std::to_string(ns3::Now().GetSeconds()) +":Phy Droped(n/id):" 
+              + std::to_string(lrWpanShowPhyTraceRxDropCounterDrop)
+              + "/" + std::to_string(lrWpanShowPhyTraceRxDropCounterRx+lrWpanShowPhyTraceRxDropCounterDrop));
+  }
+  void 
+  EnableLrWpanShowPhyTraceRxDrop(Ptr<NetDevice> netDev)
+  {
+    netDev->GetObject<LrWpanNetDevice>()->GetPhy()->TraceConnectWithoutContext
+      ("PhyRx",ns3::MakeCallback(&Helper::_LrWpanShowPhyTraceRxDropRx, this));
+    netDev->GetObject<LrWpanNetDevice>()->GetPhy()->TraceConnectWithoutContext
+      ("PhyRxDrop",ns3::MakeCallback(&Helper::_LrWpanShowPhyTraceRxDropRxDrop, this));
+  }
+  
+
+
+
 };
 
 
@@ -141,9 +198,9 @@ NetDevCb(Ptr<NetDevice> netDev, Ptr<const Packet> p, uint16_t, const Address & a
 {
   static uint32_t counter =0;
   counter ++;
-  NS_LOG_UNCOND(std::to_string(counter) + ": I received a packet!");
-  p->Print (std::cout);
-  std::cout << std::endl;
+  NS_LOG_UNCOND(std::to_string(ns3::Now().GetSeconds()) + ": NetDevice received a packet! count:"+std::to_string(counter));
+  //p->Print (std::cout);
+  //std::cout << std::endl;
   return true;
 }
 
@@ -259,12 +316,14 @@ main (int argc, char *argv[])
   recver->GetDevice(0)->SetReceiveCallback(MakeCallback(&xiao::NetDevCb));
 
   //stupid way scheduling packet seding
-  //xiao::LrWpanSendScheduleBroadcast(sender, MilliSeconds(150),MilliSeconds(300),MilliSeconds(10));
-  xiao::LrWpanSendScheduleBroadcastRandom(sender, MilliSeconds(150),MilliSeconds(300),MilliSeconds(10));
+  xiao::LrWpanSendScheduleBroadcast(sender, MilliSeconds(150),MilliSeconds(300),MilliSeconds(10));
+  //xiao::LrWpanSendScheduleBroadcastRandom(sender, MilliSeconds(150),MilliSeconds(300),MilliSeconds(10));
   //xiao::LrWpanSendSchedule(sender,recver, MilliSeconds(150),MilliSeconds(300),MilliSeconds(10));
  
   //std::cout << recver->GetDevice(0)->GetAddress() << " -- " << sender->GetDevice(0)->GetAddress() << std::endl;
   lrWpanHelper.EnablePcapAll("lrpwan_test",true);
+  //xiao_helper.EnableLrWpanShowMacTraceRxDrop(recver->GetDevice(0));
+  xiao_helper.EnableLrWpanShowPhyTraceRxDrop(recver->GetDevice(0));
   
 
   /////////////////////////////////
@@ -342,7 +401,7 @@ main (int argc, char *argv[])
 
 
 
-  Simulator::Stop (MilliSeconds (450));
+  Simulator::Stop (MilliSeconds (550));
   xiao_helper.PlaceSpectrum(channel,Vector(5,1,0));
   //xiao_helper.ConfigStorShow();
   xiao_helper.makeAnim();
