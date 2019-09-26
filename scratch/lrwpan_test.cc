@@ -140,13 +140,13 @@ class Helper{
   _LrWpanShowMacTraceRxDropRx(ns3::Ptr<const ns3::Packet> p)
   {
     lrWpanShowMacTraceRxDropCounter++;
-    NS_LOG_UNCOND(std::to_string(ns3::Now().GetSeconds()) + ":Mac Received:" + std::to_string(lrWpanShowMacTraceRxDropCounter));
+    NS_LOG_INFO("Mac Received:" + std::to_string(lrWpanShowMacTraceRxDropCounter));
   }
   void 
   _LrWpanShowMacTraceRxDropRxDrop(ns3::Ptr<const ns3::Packet> p)
   {
     lrWpanShowMacTraceRxDropCounter++;
-    NS_LOG_UNCOND(std::to_string(ns3::Now().GetSeconds()) + ":Mac Droped:" + std::to_string(lrWpanShowMacTraceRxDropCounter));
+    NS_LOG_INFO("Mac Droped:" + std::to_string(lrWpanShowMacTraceRxDropCounter));
   }
   void 
   EnableLrWpanShowMacTraceRxDrop(Ptr<NetDevice> netDev)
@@ -165,7 +165,7 @@ class Helper{
   _LrWpanShowPhyTraceRxDropRx(ns3::Ptr<const ns3::Packet> p)
   {
     lrWpanShowPhyTraceRxDropCounterRx++;
-    NS_LOG_UNCOND(std::to_string(ns3::Now().GetSeconds()) + ":Phy Received(n/id):" 
+    NS_LOG_INFO("Phy Received(n/id):" 
               + std::to_string(lrWpanShowPhyTraceRxDropCounterRx)
               + "/" + std::to_string(lrWpanShowPhyTraceRxDropCounterRx+lrWpanShowPhyTraceRxDropCounterDrop));
   }
@@ -173,7 +173,7 @@ class Helper{
   _LrWpanShowPhyTraceRxDropRxDrop(ns3::Ptr<const ns3::Packet> p)
   {
     lrWpanShowPhyTraceRxDropCounterDrop++;
-    NS_LOG_UNCOND(std::to_string(ns3::Now().GetSeconds()) +":Phy Droped(n/id):" 
+    NS_LOG_INFO("Phy Droped(n/id):" 
               + std::to_string(lrWpanShowPhyTraceRxDropCounterDrop)
               + "/" + std::to_string(lrWpanShowPhyTraceRxDropCounterRx+lrWpanShowPhyTraceRxDropCounterDrop));
   }
@@ -198,7 +198,7 @@ NetDevCb(Ptr<NetDevice> netDev, Ptr<const Packet> p, uint16_t, const Address & a
 {
   static uint32_t counter =0;
   counter ++;
-  NS_LOG_UNCOND(std::to_string(ns3::Now().GetSeconds()) + ": NetDevice received a packet! count:"+std::to_string(counter));
+  NS_LOG_INFO("NetDevice received a packet! count:"+std::to_string(counter));
   //p->Print (std::cout);
   //std::cout << std::endl;
   return true;
@@ -220,7 +220,7 @@ LrWpanSendSchedule(ns3::Ptr<ns3::Node> &sender,ns3::Ptr<ns3::Node> &receiver,
                       addr,0);
     j++;
   }
-  NS_LOG_UNCOND(std::to_string(j) + " lr-wpan packets scheduled");
+  NS_LOG_INFO(std::to_string(j) + " lr-wpan packets scheduled");
 }
 void
 LrWpanSendScheduleBroadcast(ns3::Ptr<ns3::Node> &sender,
@@ -236,7 +236,7 @@ LrWpanSendScheduleBroadcast(ns3::Ptr<ns3::Node> &sender,
                       ns3::Mac16Address("ff:ff"),0); //broadcast without mac
     j++;
   }
-  NS_LOG_UNCOND(std::to_string(j) + " lr-wpan packets scheduled");
+  NS_LOG_INFO(std::to_string(j) + " lr-wpan packets scheduled");
 }
 
 
@@ -263,7 +263,7 @@ LrWpanSendScheduleBroadcastRandom(ns3::Ptr<ns3::Node> &sender,
     j++;
     interval = maxInterval * (rand->GetValue() * 1e6)/1e6;
   }
-  NS_LOG_UNCOND(std::to_string(j) + " lr-wpan packets scheduled");
+  NS_LOG_INFO(std::to_string(j) + " lr-wpan packets scheduled");
 }
 };
 
@@ -273,7 +273,9 @@ main (int argc, char *argv[])
 {
   NS_LOG_UNCOND ("My first hello word!");
   xiao::Helper xiao_helper;
-
+  LogComponentEnableAll (LOG_PREFIX_TIME);
+  LogComponentEnable ("LrWpanTestByXiao", LOG_INFO);
+  
   Packet::EnablePrinting ();
   Packet::EnableChecking();
 
