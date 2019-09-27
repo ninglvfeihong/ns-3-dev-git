@@ -392,7 +392,7 @@ main (int argc, char *argv[])
   recver->GetDevice(0)->SetReceiveCallback(MakeCallback(&xiao::NetDevCb));
 
   //stupid way scheduling packet seding
-  xiao::LrWpanSendScheduleBroadcast(sender, MilliSeconds(150),MilliSeconds(60000),MilliSeconds(500));
+  xiao::LrWpanSendScheduleBroadcast(sender, MilliSeconds(4000),MilliSeconds(60000),MilliSeconds(500));
   //xiao::LrWpanSendScheduleBroadcastRandom(sender, MilliSeconds(150),MilliSeconds(300),MilliSeconds(10));
   //xiao::LrWpanSendSchedule(sender,recver, MilliSeconds(150),MilliSeconds(300),MilliSeconds(10));
  
@@ -412,14 +412,29 @@ main (int argc, char *argv[])
   /////////////////////////////////
   // Configure WiFi
   /////////////////////////////////
+  uint32_t wifiStaNodesN = 10;
   NodeContainer wifiNodes;
-  wifiNodes.Create (2);
-  NodeContainer wifiApNode = wifiNodes.Get (0);
-  NodeContainer wifiStaNodes = wifiNodes.Get(1);
+  NodeContainer wifiApNode;
+  wifiApNode.Create(1);
+  wifiNodes.Add(wifiApNode);
+  NodeContainer wifiStaNodes;
+  wifiStaNodes.Create(wifiStaNodesN);
+  wifiNodes.Add(wifiStaNodes);
+
   //set nodes location
   ns3::Ptr<ListPositionAllocator> wifiLocationAllocator = ns3::CreateObject<ListPositionAllocator>();
-  wifiLocationAllocator->Add(ns3::Vector(0,2,0));     //wifi AP
-  wifiLocationAllocator->Add(ns3::Vector(10,2,0));    //wifi Station
+  wifiLocationAllocator->Add(ns3::Vector(10,2,0));     //wifi AP
+  
+  wifiLocationAllocator->Add(ns3::Vector(0,2,0));    //wifi Station
+  wifiLocationAllocator->Add(ns3::Vector(7,8,0));    //wifi Station
+  wifiLocationAllocator->Add(ns3::Vector(19,3,0));    //wifi Station
+  wifiLocationAllocator->Add(ns3::Vector(6,5,0));    //wifi Station
+  wifiLocationAllocator->Add(ns3::Vector(5,8,0));    //wifi Station
+  wifiLocationAllocator->Add(ns3::Vector(15,6,0));    //wifi Station
+  wifiLocationAllocator->Add(ns3::Vector(6,10,0));    //wifi Station
+  wifiLocationAllocator->Add(ns3::Vector(6,7,0));    //wifi Station
+  wifiLocationAllocator->Add(ns3::Vector(14,11,0));    //wifi Station
+  wifiLocationAllocator->Add(ns3::Vector(7,10,0));    //wifi Station
   MobilityHelper mobility;
   mobility.SetPositionAllocator(wifiLocationAllocator);
   mobility.Install(wifiNodes);
@@ -492,11 +507,12 @@ main (int argc, char *argv[])
 
   // Install HTTP client
   ApplicationContainer clientApps = clientHelper.Install (wifiStaNodes);
-  Ptr<ThreeGppHttpClient> httpClient = clientApps.Get (0)->GetObject<ThreeGppHttpClient> ();
-
-  httpClient->GetAttribute("Variables",varPtr) ;
-  httpVariables=varPtr.Get<ThreeGppHttpVariables>();
-  httpVariables->SetAttribute("ReadingTimeMean",TimeValue(Seconds(0.1)));
+  for(uint32_t i=0;i<wifiStaNodesN;i++){
+    Ptr<ThreeGppHttpClient> httpClient = clientApps.Get (i)->GetObject<ThreeGppHttpClient> ();
+    httpClient->GetAttribute("Variables",varPtr) ;
+    httpVariables=varPtr.Get<ThreeGppHttpVariables>();
+    httpVariables->SetAttribute("ReadingTimeMean",TimeValue(Seconds(1)));
+  }
 
   // // Example of connecting to the trace sources
   // httpClient->TraceConnectWithoutContext ("RxMainObject", MakeCallback (&ClientMainObjectReceived));
@@ -543,10 +559,10 @@ main (int argc, char *argv[])
 
 
 
-  Simulator::Stop (MilliSeconds (60000));
+  Simulator::Stop (MilliSeconds (70000));
   xiao_helper.PlaceSpectrum(channel,Vector(5,1,0));
   //xiao_helper.ConfigStorShow();
-  //xiao_helper.makeAnim();
+  xiao_helper.makeAnim();
   Simulator::Run ();
   Simulator::Destroy ();
 }
