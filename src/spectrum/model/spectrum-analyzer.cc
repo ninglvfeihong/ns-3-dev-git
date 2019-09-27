@@ -41,6 +41,8 @@ SpectrumAnalyzer::SpectrumAnalyzer ()
     m_spectrumModel (0),
     m_sumPowerSpectralDensity (0),
     m_resolution (MilliSeconds (50)),
+    m_startTime (MilliSeconds (0)),
+    m_stopTime  (MilliSeconds (0)),
     m_active (false)
 {
   NS_LOG_FUNCTION (this);
@@ -78,6 +80,16 @@ SpectrumAnalyzer::GetTypeId (void)
                    "power spectral density of incoming signals is averaged",
                    TimeValue (MilliSeconds (1)),
                    MakeTimeAccessor (&SpectrumAnalyzer::m_resolution),
+                   MakeTimeChecker ())
+    .AddAttribute ("StartTime",
+                   "When to start the spectrum recording",
+                   TimeValue (MilliSeconds (0)),
+                   MakeTimeAccessor (&SpectrumAnalyzer::m_startTime),
+                   MakeTimeChecker ())
+    .AddAttribute ("StopTime",
+                   "When to start the the spectrum recording, it lasts forever by default",
+                   TimeValue (MilliSeconds (0)),
+                   MakeTimeAccessor (&SpectrumAnalyzer::m_stopTime),
                    MakeTimeChecker ())
     .AddAttribute ("NoisePowerSpectralDensity",
                    "The power spectral density of the measuring instrument "
@@ -234,6 +246,13 @@ SpectrumAnalyzer::SetRxSpectrumModel (Ptr<SpectrumModel> f)
 
 
 
+void
+SpectrumAnalyzer::PrepareGenerateReport ()
+{
+  NS_LOG_FUNCTION (this);
+  UpdateEnergyReceivedSoFar();
+  (*m_energySpectralDensity) = 0;
+}
 
 void
 SpectrumAnalyzer::Start ()
@@ -243,7 +262,12 @@ SpectrumAnalyzer::Start ()
     {
       NS_LOG_LOGIC ("activating");
       m_active = true;
-      Simulator::Schedule (m_resolution, &SpectrumAnalyzer::GenerateReport, this);
+      if(m_startTime > 0) Simulator::Schedule (m_startTime, &SpectrumAnalyzer::PrepareGenerateReport, this);
+      Simulator::Schedule (m_startTime + m_resolution, &SpectrumAnalyzer::GenerateReport, this);
+      if(m_stopTime > m_startTime)
+      {
+        Simulator::Schedule (m_stopTime, &SpectrumAnalyzer::Stop, this);
+      }
     }
 }
 

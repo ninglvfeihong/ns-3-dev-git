@@ -112,6 +112,13 @@ private:
    */
   virtual void GenerateReport ();
 
+ /**
+   * Prepare to Generate report by resetting Energy spectral density and last update time.
+   *
+   * This function is called before starting to generate report
+   */
+  virtual void PrepareGenerateReport ();
+
   /**
    * Adds a signal to the data collected.
    */
@@ -130,6 +137,8 @@ private:
   Ptr<SpectrumValue> m_energySpectralDensity;     //!< Energy spectral density
   double m_noisePowerSpectralDensity;             //!< Noise power spectral density
   Time m_resolution;                              //!< Time resolution
+  Time m_startTime;                               //!< Time to start recording
+  Time m_stopTime;                                //!< Time to stop recording
   Time m_lastChangeTime;                          //!< When the last update happened
   bool m_active;                                  //!< True if the analyzer is active
 
