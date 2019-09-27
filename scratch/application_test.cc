@@ -76,7 +76,7 @@ class Helper{
   std::shared_ptr<ns3::NodeContainer> pSpectrumAnalyzerNodes= 0;
   //std::shared_ptr<ns3::SpectrumAnalyzerHelper> pSpectrumAnalyzerHelper= 0;
   void 
-  PlaceSpectrum(const ns3::Ptr<ns3::SpectrumChannel> & channel, const Vector & position)
+  PlaceSpectrum(const ns3::Ptr<ns3::SpectrumChannel> & channel, const Vector & position, ns3::Time start, ns3::Time stop,ns3::Time resolution)
   {
 
   pSpectrumAnalyzerNodes = std::make_shared< NodeContainer >();
@@ -96,8 +96,10 @@ class Helper{
   SpectrumAnalyzerHelper spectrumAnalyzerHelper;
   spectrumAnalyzerHelper.SetChannel (channel);
   spectrumAnalyzerHelper.SetRxSpectrumModel (SpectrumModelIsm2400MhzRes1Mhz);
-  spectrumAnalyzerHelper.SetPhyAttribute ("Resolution", TimeValue (ns3::MicroSeconds (10000)));
+  spectrumAnalyzerHelper.SetPhyAttribute ("Resolution", TimeValue (resolution));
   spectrumAnalyzerHelper.SetPhyAttribute ("NoisePowerSpectralDensity", DoubleValue (1e-18));  // -150 dBm/Hz -90dBm/Mhz
+  spectrumAnalyzerHelper.SetPhyAttribute ("StartTime", TimeValue (start));  // -150 dBm/Hz -90dBm/Mhz
+  spectrumAnalyzerHelper.SetPhyAttribute ("StopTime", TimeValue (stop));  // -150 dBm/Hz -90dBm/Mhz
   spectrumAnalyzerHelper.EnableAsciiAll ("spectrum-analyzer-output");
   NetDeviceContainer spectrumAnalyzerDevices = spectrumAnalyzerHelper.Install (spectrumAnalyzerNodes);
  /*
@@ -560,7 +562,7 @@ main (int argc, char *argv[])
 
 
   Simulator::Stop (MilliSeconds (70000));
-  xiao_helper.PlaceSpectrum(channel,Vector(5,1,0));
+  xiao_helper.PlaceSpectrum(channel,Vector(5,1,0),Seconds(38),Seconds(38.02),MicroSeconds(1));
   //xiao_helper.ConfigStorShow();
   xiao_helper.makeAnim();
   Simulator::Run ();
