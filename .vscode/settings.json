@@ -49,6 +49,12 @@
         "utility": "cpp",
         "typeinfo": "cpp",
         "string": "cpp",
-        "string_view": "cpp"
+        "string_view": "cpp",
+        "atomic": "cpp",
+        "iterator": "cpp",
+        "map": "cpp",
+        "memory_resource": "cpp",
+        "optional": "cpp",
+        "set": "cpp"
     }
 }
