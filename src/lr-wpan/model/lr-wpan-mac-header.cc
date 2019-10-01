@@ -37,6 +37,7 @@ LrWpanMacHeader::LrWpanMacHeader ()
   SetDstAddrMode (NOADDR);       // Assume there will be no src and dst address
   SetSrcAddrMode (NOADDR);
   SetFrameVer (1);               //Indicates an IEEE 802.15.4 frame
+  SetCmdIdentifier(LRWPAN_MAC_CMD_RESERVED); //Indicate the command frame type
 }
 
 
@@ -53,6 +54,7 @@ LrWpanMacHeader::LrWpanMacHeader (enum LrWpanMacType wpanMacType,
   SetDstAddrMode (NOADDR);       // Assume there will be no src and dst address
   SetSrcAddrMode (NOADDR);
   SetFrameVer (1);               //Indicates an IEEE 802.15.4 frame
+  SetCmdIdentifier(LRWPAN_MAC_CMD_RESERVED); //Indicate the command frame type
 }
 
 
@@ -497,6 +499,19 @@ LrWpanMacHeader::GetInstanceTypeId (void) const
 }
 
 void
+LrWpanMacHeader::SetCmdIdentifier(enum LrWpanMacHeader::LrWpanMacCmdType cmdId)
+{
+  m_macCommandIdentifier = cmdId;
+}
+
+enum LrWpanMacHeader::LrWpanMacCmdType
+LrWpanMacHeader::GetCmdIdentifier (void) const
+{
+  if(m_macCommandIdentifier > LRWPAN_MAC_CMD_RESERVED) return (enum LrWpanMacHeader::LrWpanMacCmdType)LRWPAN_MAC_CMD_RESERVED;
+  else return (enum LrWpanMacHeader::LrWpanMacCmdType)m_macCommandIdentifier;
+}
+
+void
 LrWpanMacHeader::Print (std::ostream &os) const
 {
   os << "  Frame Type = " << (uint32_t) m_fctrlFrmType << ", Sec Enable = " << (uint32_t) m_fctrlSecU
@@ -556,6 +571,10 @@ LrWpanMacHeader::Print (std::ostream &os) const
              << ", Key Id - Key Index = " << static_cast<uint32_t> (m_auxKeyIdKeyIndex);
           break;
         }
+    }
+  if (IsCommand())
+    {
+      os << ", Command Id = " << m_macCommandIdentifier;
     }
 }
 
@@ -635,6 +654,10 @@ LrWpanMacHeader::GetSerializedSize (void) const
           break;
         }
     }
+  if (IsCommand())
+     {
+       size++;
+     }
   return (size);
 }
 
@@ -704,6 +727,10 @@ LrWpanMacHeader::Serialize (Buffer::Iterator start) const
           break;
         }
     }
+    if (IsCommand())
+      {
+        i.WriteU8(m_macCommandIdentifier);
+      }
 }
 
 
@@ -784,10 +811,101 @@ LrWpanMacHeader::Deserialize (Buffer::Iterator start)
           break;
         }
     }
+  if (IsCommand())
+    {
+      m_macCommandIdentifier = i.ReadU8 ();
+    }
   return i.GetDistanceFrom (start);
 }
 
 // ----------------------------------------------------------------------------------------------------------
+
+
+
+LrWpanMacCmdAnHeader::LrWpanMacCmdAnHeader()
+  :
+  m_GPF(0),
+  m_SPF(0)
+{
+}
+LrWpanMacCmdAnHeader::LrWpanMacCmdAnHeader(uint8_t GPF, uint8_t SPF)
+{
+  m_GPF = GPF;
+  m_SPF = SPF;
+}
+LrWpanMacCmdAnHeader::~LrWpanMacCmdAnHeader()
+{
+}
+
+
+TypeId
+LrWpanMacCmdAnHeader::GetTypeId (void)
+{
+  static TypeId tid = TypeId ("ns3::LrWpanMacCmdAnHeader")
+    .SetParent<Header> ()
+    .SetGroupName ("LrWpan")
+    .AddConstructor<LrWpanMacCmdAnHeader> ();
+  return tid;
+}
+TypeId
+
+LrWpanMacCmdAnHeader::GetInstanceTypeId (void) const
+{
+  return GetTypeId ();
+}
+
+void LrWpanMacCmdAnHeader::SetGPF (uint8_t GPF)
+{
+  m_GPF = GPF;
+}
+
+void LrWpanMacCmdAnHeader::SetSPF (uint8_t SPF)
+{
+  m_SPF = SPF;
+}
+
+uint8_t LrWpanMacCmdAnHeader::GetGPF (void) const
+{
+  return m_GPF;
+}
+
+uint8_t LrWpanMacCmdAnHeader::GetSPF (void) const
+{
+  return m_SPF;
+}
+
+void
+LrWpanMacCmdAnHeader::Print (std::ostream &os) const
+{
+  os << " GPF = " << (uint32_t) m_GPF << ", SPF = " << m_SPF;
+}
+
+uint32_t
+LrWpanMacCmdAnHeader::GetSerializedSize (void) const
+{
+  return 2;
+}
+
+
+void
+LrWpanMacCmdAnHeader::Serialize (Buffer::Iterator start) const
+{
+  Buffer::Iterator i = start;
+  i.WriteU8(m_GPF);
+  i.WriteU8(m_SPF);
+}
+
+
+uint32_t
+LrWpanMacCmdAnHeader::Deserialize (Buffer::Iterator start)
+{
+
+  Buffer::Iterator i = start;
+  m_GPF = i.ReadU8();
+  m_SPF = i.ReadU8();
+  return i.GetDistanceFrom (start);
+}
+
 
 
 } //namespace ns3
