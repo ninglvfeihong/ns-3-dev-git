@@ -75,6 +75,18 @@ typedef enum
   SET_PHY_TX_ON          //!< SET_PHY_TX_ON
 } LrWpanMacState;
 
+/**
+ * \ingroup lr-wpan
+ *
+ * MAC AN (Access notification Command) states
+ */
+typedef enum
+{
+  MAC_AN_NP,              //!< MAC_AN_NP Mac normal period state
+  MAC_AN_GP,              //!< MAC_AN_GP Mac guaranteed period state
+  MAC_AN_SP               //!< MAC_AN_SP Mac surpressed period state
+} LrWpanMacAnState;
+
 namespace TracedValueCallback {
 
 /**
@@ -115,6 +127,51 @@ typedef enum
   ASSOCIATED_WITHOUT_ADDRESS = 0xfe,
   DISASSOCIATED = 0xff
 } LrWpanAssociationStatus;
+
+/**
+ * \ingroup lr-wpan
+ *
+ * Genreal enumeration of 802.15.4 MAC. Talbe 78
+ */
+typedef enum
+{
+  IEEE802154_SUCCESS                  = 0x00,
+  IEEE802154_BEACON_LOSS              = 0xe0,
+  IEEE802154_CHANNEL_ACCESS_FAILURE   = 0xe1,
+  IEEE802154_COUNTER_ERROR            = 0xdb,
+  IEEE802154_DENIED                   = 0xe2,
+  IEEE802154_DISABLE_TRX_FAILURE      = 0xe3,
+  IEEE802154_FRAME_TOO_LONG           = 0xe5,
+  IEEE802154_IMPROPER_KEY_TYPE        = 0xdc,
+  IEEE802154_IMPROPER_SECURITY_LEVEL  = 0xdd,
+  IEEE802154_INVALID_ADDRESS          = 0xf5,
+  IEEE802154_INVALID_GTS              = 0xe6,
+  IEEE802154_INVALID_HANDLE           = 0xe7,
+  IEEE802154_INVALID_INDEX            = 0xf9,
+  IEEE802154_INVALID_PARAMETER        = 0xe8,
+  IEEE802154_LIMIT_REACHED            = 0xfa,
+  IEEE802154_NO_ACK                   = 0xe9,
+  IEEE802154_NO_BEACON                = 0xea,
+  IEEE802154_NO_DATA                  = 0xeb,
+  IEEE802154_NO_SHORT_ADDRESS         = 0xec,
+  IEEE802154_ON_TIME_TOO_LONG         = 0xf6,
+  IEEE802154_OUT_OF_CAP               = 0xed,
+  IEEE802154_PAN_ID_CONFLICT          = 0xee,
+  IEEE802154_PAST_TIME                = 0xf7,
+  IEEE802154_READ_ONLY                = 0xfb,
+  IEEE802154_REALIGNMENT              = 0xef,
+  IEEE802154_SCAN_IN_PROGRESS         = 0xfe,
+  IEEE802154_SECURITY_ERROR           = 0xe4,
+  IEEE802154_SUPERFRAME_OVERLAP       = 0xfd,
+  IEEE802154_TRACKING_OFF             = 0xf8,
+  IEEE802154_TRANSACTION_EXPIRED      = 0xf0,
+  IEEE802154_TRANSACTION_OVERFLOW     = 0xf1,
+  IEEE802154_TX_ACTIVE                = 0xf2,
+  IEEE802154_UNAVAILABLE_KEY          = 0xf3,
+  IEEE802154_UNSUPPORTED_ATTRIBUTE    = 0xf4,
+  IEEE802154_UNSUPPORTED_LEGACY       = 0xde,
+  IEEE802154_UNSUPPORTED_SECURITY     = 0xdf,
+} LrWpanMcpsConfirmStatus;
 
 /**
  * \ingroup lr-wpan
@@ -166,12 +223,39 @@ struct McpsDataRequestParams
 /**
  * \ingroup lr-wpan
  *
+ * MCPS-AN.request params. See Xiao Wang's PhD thesis proposal
+ */
+struct McpsAnRequestParams
+{
+  McpsAnRequestParams ()
+    : m_GP (0),
+      m_SP (0)
+  {
+  }
+  uint8_t m_GP;             //!< Guaranteed period field -- per 8 sysmbols
+  uint8_t m_SP;             //!< Surpressed period field -- per 64 symbils
+};
+
+
+/**
+ * \ingroup lr-wpan
+ *
  * MCPS-DATA.confirm params. See 7.1.1.2
  */
 struct McpsDataConfirmParams
 {
   uint8_t m_msduHandle; //!< MSDU handle
   LrWpanMcpsDataConfirmStatus m_status; //!< The status of the last MSDU transmission
+};
+
+/**
+ * \ingroup lr-wpan
+ *
+ * MCPS-AN.confirm params. See Xiao Wang's proposal
+ */
+struct McpsAnConfirmParams
+{
+  LrWpanMcpsConfirmStatus m_status; //!< The status of the last MSDU transmission
 };
 
 /**
@@ -201,6 +285,15 @@ struct McpsDataIndicationParams
  * transmission request
  */
 typedef Callback<void, McpsDataConfirmParams> McpsDataConfirmCallback;
+
+/**
+ * \ingroup lr-wpan
+ *
+ * This callback is called after a McpsAnRequest has been called from
+ * the higher layer.  It returns a status of the outcome of the
+ * AN request
+ */
+typedef Callback<void, McpsAnConfirmParams> McpsAnConfirmCallback;
 
 /**
  * \ingroup lr-wpan
@@ -307,6 +400,15 @@ public:
    *  \param p the packet to be transmitted
    */
   void McpsDataRequest (McpsDataRequestParams params, Ptr<Packet> p);
+ 
+ /**
+   *  IEEE 802.15.4-2006, section 7.1.1.1
+   *  MCPS-AN.request
+   *  Request to Access Notification command, proposed by Xiao Wang.
+   *
+   *  \param params the request parameters
+   */
+  void McpsAnRequest (McpsAnRequestParams params);
 
   /**
    * Set the CSMA/CA implementation to be used by the MAC.
@@ -346,6 +448,13 @@ public:
    * \param c the callback
    */
   void SetMcpsDataConfirmCallback (McpsDataConfirmCallback c);
+  /**
+   * Set the callback for the confirmation of a AN request.
+   * The callback implements MCPS-AN.confirm SAP, proposed by Xiao Wang
+   *
+   * \param c the callback
+   */
+  void SetMcpsAnConfirmCallback (McpsAnConfirmCallback c);
 
   // interfaces between MAC and PHY
   /**
@@ -495,6 +604,13 @@ public:
    * See IEEE 802.15.4-2006, section 7.4.2, Table 86.
    */
   uint16_t m_macPanId;
+
+
+  /**
+   * Attrube for enable Access Notification or not
+   * See Xiao Wang's PhD thesis proposal of Access notification for co-existing with wifi.
+   */
+  bool m_macEnableAN;
 
   /**
    * Sequence number added to transmitted data or MAC command frame, 00-ff.
@@ -767,9 +883,21 @@ private:
   McpsDataConfirmCallback m_mcpsDataConfirmCallback;
 
   /**
+   * This callback is used to report Access Notification request status
+   * upper layers.
+   * See Xiao Wang' PhD thesis proposal
+   */
+  McpsAnConfirmCallback m_mcpsAnConfirmCallback;
+
+  /**
    * The current state of the MAC layer.
    */
   TracedValue<LrWpanMacState> m_lrWpanMacState;
+
+  /**
+   * The current An Command state of the MAC layer.
+   */
+  TracedValue<LrWpanMacAnState> m_lrWpanMacAnState;
 
   /**
    * The current association status of the MAC layer.

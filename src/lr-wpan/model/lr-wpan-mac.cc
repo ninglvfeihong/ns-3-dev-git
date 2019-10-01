@@ -57,6 +57,10 @@ LrWpanMac::GetTypeId (void)
                    UintegerValue (),
                    MakeUintegerAccessor (&LrWpanMac::m_macPanId),
                    MakeUintegerChecker<uint16_t> ())
+    .AddAttribute ("EnableAN", "enable or disable Access notification support",
+                   BooleanValue (false),
+                   MakeUintegerAccessor (&LrWpanMac::m_macEnableAN),
+                   MakeUintegerChecker<bool> ())
     .AddTraceSource ("MacTxEnqueue",
                      "Trace source indicating a packet has been "
                      "enqueued in the transaction queue",
@@ -115,6 +119,10 @@ LrWpanMac::GetTypeId (void)
                      "The state of LrWpan Mac",
                      MakeTraceSourceAccessor (&LrWpanMac::m_lrWpanMacState),
                      "ns3::TracedValueCallback::LrWpanMacState")
+    .AddTraceSource ("MacAnStateValue",
+                     "The state of LrWpan Mac AN Comand, include GP, SP, NP ",
+                     MakeTraceSourceAccessor (&LrWpanMac::m_lrWpanMacAnState),
+                     "ns3::TracedValueCallback::LrWpanMacAnState")
     .AddTraceSource ("MacState",
                      "The state of LrWpan Mac",
                      MakeTraceSourceAccessor (&LrWpanMac::m_macStateLogger),
@@ -133,10 +141,12 @@ LrWpanMac::LrWpanMac ()
 
   // First set the state to a known value, call ChangeMacState to fire trace source.
   m_lrWpanMacState = MAC_IDLE;
+  m_lrWpanMacAnState = MAC_AN_NP; 
   ChangeMacState (MAC_IDLE);
 
   m_macRxOnWhenIdle = true;
   m_macPanId = 0;
+  m_macEnableAN = false;
   m_associationStatus = ASSOCIATED;
   m_selfExt = Mac64Address::Allocate ();
   m_macPromiscuousMode = false;
@@ -189,6 +199,7 @@ LrWpanMac::DoDispose ()
   m_phy = 0;
   m_mcpsDataIndicationCallback = MakeNullCallback< void, McpsDataIndicationParams, Ptr<Packet> > ();
   m_mcpsDataConfirmCallback = MakeNullCallback< void, McpsDataConfirmParams > ();
+  m_mcpsAnConfirmCallback = MakeNullCallback< void, McpsAnConfirmParams > ();
 
   Object::DoDispose ();
 }
@@ -250,6 +261,16 @@ void
 LrWpanMac::McpsDataRequest (McpsDataRequestParams params, Ptr<Packet> p)
 {
   NS_LOG_FUNCTION (this << p);
+
+
+
+
+
+
+
+
+
+
 
   McpsDataConfirmParams confirmParams;
   confirmParams.m_msduHandle = params.m_msduHandle;
@@ -1077,6 +1098,53 @@ void
 LrWpanMac::SetMacMaxFrameRetries (uint8_t retries)
 {
   m_macMaxFrameRetries = retries;
+}
+
+
+
+void
+LrWpanMac::McpsAnRequest (McpsAnRequestParams params)
+{
+  Ptr<Packet> packet = Create<Packet> ();
+  LrWpanMacCmdAnHeader cmdAnHdr(params.m_GP, params.m_SP);
+  
+  //add Mac Command Header
+  packet->AddHeader(cmdAnHdr);
+
+  //set up mac header
+  LrWpanMacHeader macHdr (LrWpanMacHeader::LRWPAN_MAC_COMMAND, m_macDsn.GetValue ());
+  macHdr.SetCmdIdentifier(LrWpanMacHeader::LRWPAN_MAC_CMD_ASSESS_CONTROL);
+  m_macDsn++;
+
+  /* config 1 */
+  macHdr.SetPanIdComp();
+  //setting src address,
+  macHdr.SetSrcAddrMode(SHORT_ADDR);
+  macHdr.SetSrcAddrFields (GetPanId (), GetShortAddress ());
+  macHdr.SetDstAddrMode(SHORT_ADDR);
+  macHdr.SetSrcAddrFields (GetPanId (), Mac16Address("ff:ff"));
+ 
+  /*
+  macHdr.SetNoPanIdComp();
+  macHdr.SetSrcAddrMode(NO_PANID_ADDR);
+  macHdr.SetDstAddrMode(NO_PANID_ADDR);
+  */
+
+  macHdr.SetSecDisable ();
+  macHdr.SetNoAckReq();
+
+  //add mac header.
+  packet->AddHeader(macHdr);
+
+  /**
+   *  finish the packet setting up
+   */
+}
+
+void
+LrWpanMac::SetMcpsAnConfirmCallback (McpsAnConfirmCallback c)
+{
+  m_mcpsAnConfirmCallback = c;
 }
 
 } // namespace ns3
