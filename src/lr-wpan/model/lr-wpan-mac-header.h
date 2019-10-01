@@ -89,6 +89,24 @@ public:
     LONGKEYSOURCE = 3
   };
 
+  /**
+   * The possible MAC command types, see IEEE 802.15.4-2006, Table 82.
+   */
+  enum LrWpanMacCmdType
+  {
+    LRWPAN_MAC_CMD_ASSOCIATION_REQ              = 1,        //!< LRWPAN_MAC_ASSOCIATION_REQ
+    LRWPAN_MAC_CMD_ASSOCIATION_RESP             = 2,        //!< LRWPAN_MAC_ASSOCIATION_RESP
+    LRWPAN_MAC_CMD_DISASSOCIATION_NOTIFICATION  = 3,        //!< LRWPAN_MAC_ASSOCIATION_RESP
+    LRWPAN_MAC_CMD_DATA_REQ                     = 4,        //!< LRWPAN_MAC_ASSOCIATION_RESP
+    LRWPAN_MAC_CMD_PANID_CONFLICT_NOTIFICATION  = 5,        //!< LRWPAN_MAC_ASSOCIATION_RESP
+    LRWPAN_MAC_CMD_ORPHAN_NOTIFICATION          = 6,        //!< LRWPAN_MAC_DATA
+    LRWPAN_MAC_CMD_BEACON_REQ                   = 7,        //!< LRWPAN_MAC_ACKNOWLEDGMENT
+    LRWPAN_MAC_CMD_COORDINATOR_REALIGNMENT      = 8,        //!< LRWPAN_MAC_COMMAND
+    LRWPAN_MAC_CMD_GTS_REQ                      = 9,        //!< LRWPAN_MAC_COMMAND
+    LRWPAN_MAC_CMD_ASSESS_CONTROL               = 10,        //!< LRWPAN_MAC_COMMAND
+    LRWPAN_MAC_CMD_RESERVED           //!< LRWPAN_MAC_RESERVED
+  };
+
   LrWpanMacHeader (void);
 
   /**
@@ -415,6 +433,19 @@ public:
   void SetKeyId (uint64_t keySrc, uint8_t keyIndex);
 
   /**
+   * call this function ti set the command identifier if the frame type is command frame.
+   *  \param cmdId  the command id
+   */
+  void SetCmdIdentifier(enum LrWpanMacCmdType cmdId);
+
+  /**
+   * return Cmd identifier
+   * 
+   */
+  enum LrWpanMacCmdType GetCmdIdentifier (void) const;
+
+
+  /**
    * \brief Get the type ID.
    * \return the object TypeId
    */
@@ -466,6 +497,8 @@ private:
 
   uint8_t m_secctrlReserved;            //!< Auxiliary security header - Security Control field - Bit 5-7
 
+  uint8_t m_macCommandIdentifier;       //command identifier
+
   union
   {
     uint32_t m_auxKeyIdKeySrc32;        //!< Auxiliary security header - Key Source (4 Octets)
@@ -475,6 +508,69 @@ private:
   uint8_t m_auxKeyIdKeyIndex;           //!< Auxiliary security header - Key Index (1 Octet)
 
 }; //LrWpanMacHeader
+
+
+/**
+ * \ingroup lr-wpan
+ * Represent the Mac Cmd AN (Access Notification) Header
+ */
+class LrWpanMacCmdAnHeader : public Header
+{
+public:
+  LrWpanMacCmdAnHeader();
+  LrWpanMacCmdAnHeader(uint8_t GPF, uint8_t SPF);
+  ~LrWpanMacCmdAnHeader();
+  
+  /**
+   * Set the GPF field
+   * \param GPF
+   */
+  void SetGPF (uint8_t GPF);
+  
+  /**
+   * Set the SPF field
+   * \param SPF
+   */
+  void SetSPF (uint8_t SPF);
+  
+  /**
+   * \brief Get the type ID.
+   * \return the object TypeId
+   */
+
+  /**
+   * Get the GPF field
+   * \return GPF
+   */
+  uint8_t GetGPF (void) const;
+
+  /**
+   * Get the SPF field
+   * \return SPF
+   */
+  uint8_t GetSPF (void) const;
+
+  static TypeId GetTypeId (void);
+  TypeId GetInstanceTypeId (void) const;
+  void Print (std::ostream &os) const;
+  uint32_t GetSerializedSize (void) const;
+  void Serialize (Buffer::Iterator start) const;
+  uint32_t Deserialize (Buffer::Iterator start);
+private:
+  uint8_t m_GPF;        //!< Guaranteed period field
+  uint8_t m_SPF;        //!< Surpressed Period Field
+};
+
+
+
+
+
+
+
+
+
+
+
 
 }; // namespace ns-3
 
