@@ -786,6 +786,11 @@ private:
    * 
    */
   Ptr<Packet> AnPacketAssemble(void);
+  /**
+   * Estimate a frame sending time needed, include ack. mainly used by data sending when in GP period.
+   * 
+   */
+  ns3::Time FrameSendEstimation(Ptr<Packet> p);
 
   /**
    * AN GP and SP manage

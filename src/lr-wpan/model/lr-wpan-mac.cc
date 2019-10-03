@@ -552,6 +552,23 @@ Ptr<Packet> LrWpanMac::AnPacketAssemble(void)
   return packet;
 }
 
+ns3::Time
+LrWpanMac::FrameSendEstimation(Ptr<Packet> p)
+{
+  ns3::Time result = Seconds(0);
+  result += SymbolToTime(GetFrameDuration(m_txPkt->GetSize()));
+  result += SymbolToTime(GetPhy()->aTurnaroundTime);
+  LrWpanMacHeader macHdr;
+  p->PeekHeader(macHdr);
+  if(macHdr.IsAckReq())
+  {
+    //ack wait time IEEE standard P168 
+    //macAckWaitDuration = aUnitBackoffPeriod + aTurnaroundTime + phySHRDuration + 6 ⋅ phySymbolsPerOctet]
+    result += MicroSeconds (GetMacAckWaitDuration () * 1000 * 1000 / m_phy->GetDataOrSymbolRate (false));
+  }
+  return result;
+}
+
 void
 LrWpanMac::ChangeWpanMacAnState (LrWpanMacAnState anState)
 {
@@ -559,13 +576,16 @@ LrWpanMac::ChangeWpanMacAnState (LrWpanMacAnState anState)
   {
     m_lrWpanMacAnState = MAC_AN_SP;
     m_macAnStateEvent.Cancel();
-    m_macAnStateEvent = Simulator::Schedule(SymbolToTime(m_anProcessData.m_AN.m_SPF*64),&LrWpanMac::ChangeWpanMacAnState, this, MAC_AN_NP);
+    ns3::Time delay = SymbolToTime(m_anProcessData.m_AN.m_SPF*64);
+    delay += m_anProcessData.GpExpireTime-ns3::Now();
+    m_macAnStateEvent = Simulator::Schedule(delay,&LrWpanMac::ChangeWpanMacAnState, this, MAC_AN_NP);
 
   }else if(m_lrWpanMacAnState== MAC_AN_SP && anState == MAC_AN_NP)
   {
 
     m_lrWpanMacAnState = MAC_AN_NP;
-    //m_txPkt = 0;//allow check queue works
+    m_txPkt = 0;//allow check queue works
+    ChangeMacState(MAC_IDLE);
     CheckQueue();
     //TODO, report the histroy.
 
@@ -800,7 +820,7 @@ LrWpanMac::PdDataIndication (uint32_t psduLength, Ptr<Packet> p, uint8_t lqi)
                     m_setMacState = Simulator::ScheduleNow (&LrWpanMac::SetLrWpanMacState, this, MAC_IDLE);
                   }
                   m_lrWpanMacAnState = MAC_AN_GP;
-                  m_macAnStateEvent = Simulator::Schedule(SymbolToTime(cmdHdr.GetGPF()*8),&LrWpanMac::ChangeWpanMacAnState, this, MAC_AN_SP);
+                  m_macAnStateEvent = Simulator::Schedule(SymbolToTime(m_anProcessData.m_AN.m_GpExpire),&LrWpanMac::ChangeWpanMacAnState, this, MAC_AN_SP);
                   
 
                 }
@@ -1202,6 +1222,27 @@ LrWpanMac::SetLrWpanMacState (LrWpanMacState macState)
     }
   else if (m_lrWpanMacState == MAC_CSMA && macState == CHANNEL_IDLE)
     {
+      if(m_lrWpanMacAnState == MAC_AN_GP)
+      {
+        //calcualation wether there is enough time for data transmission.
+        if(m_anProcessData.GpExpireTime < ns3::Now() + FrameSendEstimation(m_txPkt))
+        {
+          // not enough GP time left to transmision the packet, thus give up transmission, and retransmission later.
+          ChangeMacState(MAC_IDLE);
+          m_txPkt = 0;
+          m_setMacState.Cancel();
+          m_macAnStateEvent.Cancel();
+          m_macAnStateEvent = ns3::Simulator::ScheduleNow(&LrWpanMac::ChangeWpanMacAnState, this, MAC_AN_SP);
+          return;
+        }
+      }else if(m_lrWpanMacAnState == MAC_AN_SP)
+      {
+        //the state is SP before CSMA, however, when CSMA finished, it changed to SP state. The sneding should be canceled
+        ChangeMacState(MAC_IDLE);
+        m_txPkt = 0;
+        m_setMacState.Cancel();
+        return;
+      }
       // Channel is idle, set transmitter to TX_ON
       ChangeMacState (MAC_SENDING);
       m_phy->PlmeSetTRXStateRequest (IEEE_802_15_4_PHY_TX_ON);
