@@ -245,7 +245,7 @@ LrWpanSendScheduleAn(ns3::Ptr<ns3::NetDevice> senderDev,
   ns3::Time i;
   uint32_t j=0;
   ns3::McpsAnRequestParams params;
-  params.m_GpExpire = 30*1000/16;
+  params.m_GpExpire = 10*1000/16;
   params.m_SPF = 40;
   for(i= start;  i<end; i += interval){
     ns3::Ptr<ns3::LrWpanMac> mac = senderDev->GetObject<LrWpanNetDevice>()->GetMac();
@@ -344,7 +344,7 @@ main (int argc, char *argv[])
   xiao_helper.EnableLrWpanShowPhyTraceRxDrop(recver->GetDevice(0));
 
   //schedule AN
-  xiao::LrWpanSendScheduleAn(lrDevices.Get(0), MilliSeconds(150),MilliSeconds(500),MilliSeconds(60));
+  xiao::LrWpanSendScheduleAn(lrDevices.Get(0), MilliSeconds(150),MilliSeconds(500),MilliSeconds(20));
 
 
   ns3::Ptr<ns3::SpectrumChannel> channel = lrWpanHelper.GetChannel();
