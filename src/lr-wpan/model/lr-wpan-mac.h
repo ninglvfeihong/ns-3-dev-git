@@ -82,9 +82,11 @@ typedef enum
  */
 typedef enum
 {
-  MAC_AN_NP,              //!< MAC_AN_NP Mac normal period state
-  MAC_AN_GP,              //!< MAC_AN_GP Mac guaranteed period state
-  MAC_AN_SP               //!< MAC_AN_SP Mac surpressed period state
+  MAC_AN_NP,                    //!< MAC_AN_NP Mac normal period state
+  MAC_AN_GP,                    //!< MAC_AN_GP Mac guaranteed period state
+  MAC_AN_SP,                    //!< MAC_AN_SP Mac surpressed period state
+  MAC_AN_SENDING,                //!< AN sending state. 
+  MAC_AN_PENDING                //!< AN pending state. An waited to be sent
 } LrWpanMacAnState;
 
 namespace TracedValueCallback {
@@ -228,12 +230,36 @@ struct McpsDataRequestParams
 struct McpsAnRequestParams
 {
   McpsAnRequestParams ()
-    : m_GP (0),
-      m_SP (0)
+    : m_GpExpire (0),
+      m_SPF (0)
   {
   }
-  uint8_t m_GP;             //!< Guaranteed period field -- per 8 sysmbols
-  uint8_t m_SP;             //!< Surpressed period field -- per 64 symbils
+  uint16_t m_GpExpire;             //!< Guaranteed period expire time -- in symbols
+  uint16_t m_SPF;                   //!< Surpressed period field -- per 64 symbols
+};
+
+/**
+ * \ingroup lr-wpan
+ *
+ * AN request processing data, help to process the state machine. See Xiao Wang's PhD thesis proposal
+ */
+struct McpsAnRequestProcessData
+{
+  // the Packet isn't included, only forward declared, thus 
+  /*orward-declaring a class is a promise to the compiler to provide a definition at some later point. 
+  In return the compiler lets you use your forward-declared class in other declarations, 
+  where the content of the class is not required, such as declaring a pointer or a reference.
+  */
+  // McpsAnRequestProcessData ()
+  //   : m_AN(),
+  //     m_tx (0),
+  //     startTime()
+  // {
+  // }
+  struct McpsAnRequestParams m_AN; //!< AN parameter
+  Ptr<Packet> m_tx;         //!< the packet that is being sent
+  ns3::Time startTime;      //!< record when the MCPS-AP.request is called to recaculate GFP
+  ns3::Time GpExpireTime;   //!< record when the MCPS-AP.request is called to recaculate GFP
 };
 
 
@@ -731,6 +757,40 @@ private:
   void CheckQueue (void);
 
   /**
+   *get the time duration by Symbol Numbers. 
+   * 
+   */
+  inline Time SymbolToTime(uint32_t symbolsNumber);
+  
+  /**
+   *get Symbol Numbers by the time duration, round up method. 
+   * 
+   */
+  inline uint32_t TimeToSymbol(Time time);
+
+  /**
+   *get the time duration of AN frame in Symbols, including SHR PHR pluse given psdusize
+   * 
+   */
+  inline uint32_t GetFrameDuration(uint32_t psduSize);
+  
+  /**
+   *get the time duration of AN frame in Symbols, including CCA, RX2TX, SHR, PHR pluse given psdusize
+   * 
+   */
+  inline uint32_t GetSendingDurationMin(uint32_t psduSize);
+  /**
+   * assemble a An Packet according to current time and given parameter
+   * 
+   */
+  Ptr<Packet> AnPacketAssemble(void);
+
+  /**
+   * AN GP and SP manage
+   *
+   */
+  void ChangeWpanMacAnState (LrWpanMacAnState anState);
+  /**
    * The trace source fired when packets are considered as successfully sent
    * or the transmission has been given up.
    * Only non-broadcast packets are traced.
@@ -910,6 +970,16 @@ private:
   Ptr<Packet> m_txPkt;  // XXX need packet buffer instead of single packet
 
   /**
+   * The AN command processing data which is currently being sent by the MAC layer.
+   */
+  struct McpsAnRequestProcessData m_anProcessData; 
+  
+  /**
+   * The AN command minimum GP period.
+   */
+  ns3::Time m_minGP; 
+
+  /**
    * The short address used by this MAC. Currently we do not have complete
    * extended address support in the MAC, nor do we have the association
    * primitives, so this address has to be configured manually.
@@ -948,6 +1018,10 @@ private:
    * Scheduler event for a deferred MAC state change.
    */
   EventId m_setMacState;
+  /**
+   * Scheduler event for a MAC AN state change.
+   */
+  EventId m_macAnStateEvent;
 };
 
 
