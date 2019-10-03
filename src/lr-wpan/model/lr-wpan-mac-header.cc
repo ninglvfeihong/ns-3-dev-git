@@ -574,7 +574,7 @@ LrWpanMacHeader::Print (std::ostream &os) const
     }
   if (IsCommand())
     {
-      os << ", Command Id = " << m_macCommandIdentifier;
+      os << ", Command Id = " << (uint32_t) m_macCommandIdentifier;
     }
 }
 
@@ -877,7 +877,7 @@ uint8_t LrWpanMacCmdAnHeader::GetSPF (void) const
 void
 LrWpanMacCmdAnHeader::Print (std::ostream &os) const
 {
-  os << " GPF = " << (uint32_t) m_GPF << ", SPF = " << m_SPF;
+  os << " GPF = " << (uint32_t) m_GPF << ", SPF = " << (uint32_t) m_SPF;
 }
 
 uint32_t
