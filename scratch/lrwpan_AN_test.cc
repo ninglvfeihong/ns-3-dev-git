@@ -249,7 +249,7 @@ LrWpanSendScheduleAn(ns3::Ptr<ns3::NetDevice> senderDev,
   params.m_SPF = 40;
   for(i= start;  i<end; i += interval){
     ns3::Ptr<ns3::LrWpanMac> mac = senderDev->GetObject<LrWpanNetDevice>()->GetMac();
-    Simulator::Schedule(i,&LrWpanMac::McpsAnRequest,mac,params); //broadcast without mac
+    Simulator::Schedule(i,&LrWpanMac::McpsAnRequestImmediate,mac,params); //broadcast without mac
     j++;
   }
   NS_LOG_INFO(std::to_string(j) + " lr-wpan packets scheduled");
