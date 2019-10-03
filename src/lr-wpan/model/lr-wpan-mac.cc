@@ -142,6 +142,8 @@ LrWpanMac::LrWpanMac ()
   // First set the state to a known value, call ChangeMacState to fire trace source.
   m_lrWpanMacState = MAC_IDLE;
   m_lrWpanMacAnState = MAC_AN_NP; 
+  m_minGP = MilliSeconds(3);
+  m_anProcessData = {};
   ChangeMacState (MAC_IDLE);
 
   m_macRxOnWhenIdle = true;
@@ -261,16 +263,6 @@ void
 LrWpanMac::McpsDataRequest (McpsDataRequestParams params, Ptr<Packet> p)
 {
   NS_LOG_FUNCTION (this << p);
-
-
-
-
-
-
-
-
-
-
 
   McpsDataConfirmParams confirmParams;
   confirmParams.m_msduHandle = params.m_msduHandle;
@@ -461,7 +453,10 @@ LrWpanMac::McpsDataRequest (McpsDataRequestParams params, Ptr<Packet> p)
   txQElement->txQPkt = p;
   m_txQueue.push_back (txQElement);
 
-  CheckQueue ();
+  /**
+   * Don't check if the AN state is SP or Sending. The queue will be checked, once these period finished
+   */
+  if(m_lrWpanMacAnState!= MAC_AN_SENDING && m_lrWpanMacAnState!=MAC_AN_SP) CheckQueue ();
 }
 
 void
@@ -477,6 +472,110 @@ LrWpanMac::CheckQueue ()
       m_setMacState = Simulator::ScheduleNow (&LrWpanMac::SetLrWpanMacState, this, MAC_CSMA);
     }
 }
+
+inline Time
+LrWpanMac::SymbolToTime(uint32_t symbolsNumber)
+{
+  return MicroSeconds (symbolsNumber* 1000 * 1000/GetPhy ()->GetDataOrSymbolRate (false));
+}
+
+inline uint32_t
+LrWpanMac::TimeToSymbol(Time time)
+{
+  return (uint32_t) ceil(time.GetMicroSeconds()* GetPhy ()->GetDataOrSymbolRate (false)/ 1000 / 1000);
+}
+
+inline uint32_t LrWpanMac::GetFrameDuration(uint32_t psduSize)
+{
+  double SPO = m_phy->GetPhySymbolsPerOctet();
+  return SPO*(1/*PHY header*/ + psduSize) + m_phy->GetPhySHRDuration() + 8 /*CCA duration*/;
+
+}
+inline uint32_t LrWpanMac::GetSendingDurationMin(uint32_t psduSize)
+{
+  return GetFrameDuration(psduSize) + 8 /*CCA duration*/ + ns3::LrWpanPhy::aTurnaroundTime;
+}
+
+Ptr<Packet> LrWpanMac::AnPacketAssemble(void)
+{
+  Ptr<Packet> packet = Create<Packet> ();
+  uint8_t GP=0;
+  Time frameDuration;
+  LrWpanMacCmdAnHeader cmdAnHdr(GP, m_anProcessData.m_AN.m_SPF);
+  //add Mac Command Header
+
+  //set up mac header
+  LrWpanMacHeader macHdr (LrWpanMacHeader::LRWPAN_MAC_COMMAND, m_macDsn.GetValue ());
+  macHdr.SetCmdIdentifier(LrWpanMacHeader::LRWPAN_MAC_CMD_ASSESS_CONTROL);
+  m_macDsn++;
+
+  /* config 1 */
+  macHdr.SetPanIdComp();
+  //setting src address,
+  macHdr.SetSrcAddrMode(SHORT_ADDR);
+  macHdr.SetSrcAddrFields (GetPanId (), GetShortAddress ());
+  macHdr.SetDstAddrMode(SHORT_ADDR);
+  macHdr.SetDstAddrFields (GetPanId (), Mac16Address("ff:ff"));
+ 
+  /*
+  macHdr.SetNoPanIdComp();
+  macHdr.SetSrcAddrMode(NO_PANID_ADDR);
+  macHdr.SetDstAddrMode(NO_PANID_ADDR);
+  */
+
+  macHdr.SetSecDisable ();
+  macHdr.SetNoAckReq();
+
+
+
+  LrWpanMacTrailer macTrailer;
+  // Calculate FCS if the global attribute ChecksumEnable is set.
+  if (Node::ChecksumEnabled ())
+    {
+      macTrailer.EnableFcs (true);
+      macTrailer.SetFcs (packet);
+    }
+
+
+  
+  frameDuration = SymbolToTime(GetFrameDuration(macHdr.GetSerializedSize()+macHdr.GetSerializedSize()+macTrailer.GetSerializedSize()));
+  if(ns3::Now()+frameDuration < m_anProcessData.GpExpireTime){
+    GP = TimeToSymbol( m_anProcessData.GpExpireTime - ns3::Now() - frameDuration);
+  }else{
+    GP = 0;
+  }
+  cmdAnHdr.SetGPF(GP);
+
+  packet->AddHeader(cmdAnHdr); 
+  packet->AddHeader(macHdr);
+  packet->AddTrailer (macTrailer);
+  return packet;
+}
+
+void
+LrWpanMac::ChangeWpanMacAnState (LrWpanMacAnState anState)
+{
+  if(m_lrWpanMacAnState== MAC_AN_GP && anState == MAC_AN_SP)
+  {
+    m_lrWpanMacAnState = MAC_AN_SP;
+    m_macAnStateEvent.Cancel();
+    m_macAnStateEvent = Simulator::Schedule(SymbolToTime(m_anProcessData.m_AN.m_SPF*64),&LrWpanMac::ChangeWpanMacAnState, this, MAC_AN_NP);
+
+  }else if(m_lrWpanMacAnState== MAC_AN_SP && anState == MAC_AN_NP)
+  {
+
+    m_lrWpanMacAnState = MAC_AN_NP;
+    //m_txPkt = 0;//allow check queue works
+    CheckQueue();
+    //TODO, report the histroy.
+
+  }else
+  {
+    NS_FATAL_ERROR("Unexpected AN state");
+  }
+
+}
+
 
 void
 LrWpanMac::SetCsmaCa (Ptr<LrWpanCsmaCa> csmaCa)
@@ -683,7 +782,28 @@ LrWpanMac::PdDataIndication (uint32_t psduLength, Ptr<Packet> p, uint8_t lqi)
                   ChangeMacState (MAC_IDLE);
                   m_setMacState = Simulator::ScheduleNow (&LrWpanMac::SendAck, this, receivedMacHdr.GetSeqNum ());
                 }
+              if(receivedMacHdr.IsCommand() && receivedMacHdr.GetCmdIdentifier() == LrWpanMacHeader::LRWPAN_MAC_CMD_ASSESS_CONTROL)
+                {
+                  NS_ASSERT(m_lrWpanMacAnState != MAC_AN_SENDING && m_lrWpanMacAnState != MAC_AN_PENDING); //this case is logically impossible in application
+                  LrWpanMacCmdAnHeader cmdHdr;
+                  p->RemoveHeader(cmdHdr);
+                  m_anProcessData.m_AN.m_SPF = cmdHdr.GetSPF();
+                  m_anProcessData.m_AN.m_GpExpire = cmdHdr.GetGPF()*8;
+                  m_anProcessData.GpExpireTime = ns3::Now() + SymbolToTime(m_anProcessData.m_AN.m_GpExpire);
+                  m_macAnStateEvent.Cancel();
+                                    
+                  if(m_lrWpanMacAnState == MAC_AN_SP)
+                  {
+                    //previously surpressed, thus resume transmission from data queue
+                    m_setMacState.Cancel ();
+                    m_txPkt = 0;//allow check queue works
+                    m_setMacState = Simulator::ScheduleNow (&LrWpanMac::SetLrWpanMacState, this, MAC_IDLE);
+                  }
+                  m_lrWpanMacAnState = MAC_AN_GP;
+                  m_macAnStateEvent = Simulator::Schedule(SymbolToTime(cmdHdr.GetGPF()*8),&LrWpanMac::ChangeWpanMacAnState, this, MAC_AN_SP);
+                  
 
+                }
               if (receivedMacHdr.IsData () && !m_mcpsDataIndicationCallback.IsNull ())
                 {
                   // If it is a data frame, push it up the stack.
@@ -844,7 +964,42 @@ LrWpanMac::PdDataConfirm (LrWpanPhyEnumeration status)
   NS_ASSERT (m_lrWpanMacState == MAC_SENDING);
 
   NS_LOG_FUNCTION (this << status << m_txQueue.size ());
-
+  if(m_lrWpanMacAnState == MAC_AN_SENDING)
+  {
+    if(status == IEEE_802_15_4_PHY_SUCCESS)
+    {
+      m_lrWpanMacAnState = MAC_AN_GP;
+      m_macTxOkTrace (m_anProcessData.m_tx);
+      if (!m_mcpsDataConfirmCallback.IsNull ())
+        {
+          McpsAnConfirmParams confirmParams;
+          confirmParams.m_status = IEEE802154_SUCCESS;
+          m_mcpsAnConfirmCallback (confirmParams);
+        }
+      m_setMacState.Cancel ();
+      m_txPkt = 0;//allow check queue works
+      m_setMacState = Simulator::ScheduleNow (&LrWpanMac::SetLrWpanMacState, this, MAC_IDLE);
+      //schedule GP timeout
+      
+      if(m_anProcessData.GpExpireTime < ns3::Now())  m_anProcessData.GpExpireTime = ns3::Now();
+      m_macAnStateEvent.Cancel();
+      m_macAnStateEvent = Simulator::Schedule(m_anProcessData.GpExpireTime-ns3::Now(),&LrWpanMac::ChangeWpanMacAnState, this, MAC_AN_SP);
+    }
+    else
+    {
+      m_lrWpanMacAnState = MAC_AN_NP;
+      m_macTxDropTrace (m_anProcessData.m_tx);
+      if (!m_mcpsDataConfirmCallback.IsNull ())
+        {
+          McpsAnConfirmParams confirmParams;
+          confirmParams.m_status = IEEE802154_FRAME_TOO_LONG;
+          m_mcpsAnConfirmCallback (confirmParams);
+        }
+      m_anProcessData ={};
+    }
+  }
+  else
+  {
   LrWpanMacHeader macHdr;
   m_txPkt->PeekHeader (macHdr);
   if (status == IEEE_802_15_4_PHY_SUCCESS)
@@ -914,6 +1069,7 @@ LrWpanMac::PdDataConfirm (LrWpanPhyEnumeration status)
       // data transmission.
       NS_FATAL_ERROR ("Transmission attempt failed with PHY status " << status);
     }
+  }
 
   m_setMacState.Cancel ();
   m_setMacState = Simulator::ScheduleNow (&LrWpanMac::SetLrWpanMacState, this, MAC_IDLE);
@@ -949,18 +1105,37 @@ LrWpanMac::PlmeSetTRXStateConfirm (LrWpanPhyEnumeration status)
 
   if (m_lrWpanMacState == MAC_SENDING && (status == IEEE_802_15_4_PHY_TX_ON || status == IEEE_802_15_4_PHY_SUCCESS))
     {
-      NS_ASSERT (m_txPkt);
+      if(m_lrWpanMacAnState == MAC_AN_SENDING)
+      {
+        m_anProcessData.m_tx = AnPacketAssemble();
+        NS_ASSERT (m_anProcessData.m_tx);
+        m_promiscSnifferTrace (m_anProcessData.m_tx);
+        m_snifferTrace (m_anProcessData.m_tx);
+        m_macTxTrace (m_anProcessData.m_tx);
+        m_phy->PdDataRequest (m_anProcessData.m_tx->GetSize (), m_anProcessData.m_tx);
+      }
+      else
+      {
+        NS_ASSERT (m_txPkt);
 
-      // Start sending if we are in state SENDING and the PHY transmitter was enabled.
-      m_promiscSnifferTrace (m_txPkt);
-      m_snifferTrace (m_txPkt);
-      m_macTxTrace (m_txPkt);
-      m_phy->PdDataRequest (m_txPkt->GetSize (), m_txPkt);
+        // Start sending if we are in state SENDING and the PHY transmitter was enabled.
+        m_promiscSnifferTrace (m_txPkt);
+        m_snifferTrace (m_txPkt);
+        m_macTxTrace (m_txPkt);
+        m_phy->PdDataRequest (m_txPkt->GetSize (), m_txPkt);
+      }
+
     }
   else if (m_lrWpanMacState == MAC_CSMA && (status == IEEE_802_15_4_PHY_RX_ON || status == IEEE_802_15_4_PHY_SUCCESS))
     {
       // Start the CSMA algorithm as soon as the receiver is enabled.
-      m_csmaCa->Start ();
+      if(m_lrWpanMacAnState == MAC_AN_SENDING)
+      {
+        Time FrameSendingDuration = SymbolToTime(GetFrameDuration(AnPacketAssemble()->GetSize()));
+        Time priorityEndTime = m_anProcessData.GpExpireTime - FrameSendingDuration;
+        m_csmaCa->StartPriority (priorityEndTime);//start priority CSMA for AN
+      }
+      else m_csmaCa->Start ();
     }
   else if (m_lrWpanMacState == MAC_IDLE)
     {
@@ -997,7 +1172,11 @@ LrWpanMac::SetLrWpanMacState (LrWpanMacState macState)
   if (macState == MAC_IDLE)
     {
       ChangeMacState (MAC_IDLE);
-
+      if(m_lrWpanMacAnState == MAC_AN_PENDING) {
+        m_lrWpanMacAnState = MAC_AN_SENDING;
+        m_setMacState.Cancel ();
+        m_setMacState = Simulator::ScheduleNow (&LrWpanMac::SetLrWpanMacState, this, MAC_CSMA);
+      }
       if (m_macRxOnWhenIdle)
         {
           m_phy->PlmeSetTRXStateRequest (IEEE_802_15_4_PHY_RX_ON);
@@ -1006,8 +1185,8 @@ LrWpanMac::SetLrWpanMacState (LrWpanMacState macState)
         {
           m_phy->PlmeSetTRXStateRequest (IEEE_802_15_4_PHY_TRX_OFF);
         }
-
-      CheckQueue ();
+      if(m_lrWpanMacAnState != MAC_AN_SENDING && m_lrWpanMacAnState!=MAC_AN_SP) CheckQueue ();
+      //allow delay sending AN
     }
   else if (macState == MAC_ACK_PENDING)
     {
@@ -1029,21 +1208,40 @@ LrWpanMac::SetLrWpanMacState (LrWpanMacState macState)
     }
   else if (m_lrWpanMacState == MAC_CSMA && macState == CHANNEL_ACCESS_FAILURE)
     {
-      NS_ASSERT (m_txPkt);
-
-      // cannot find a clear channel, drop the current packet.
-      NS_LOG_DEBUG ( this << " cannot find clear channel");
-      confirmParams.m_msduHandle = m_txQueue.front ()->txQMsduHandle;
-      confirmParams.m_status = IEEE_802_15_4_CHANNEL_ACCESS_FAILURE;
-      m_macTxDropTrace (m_txPkt);
-      if (!m_mcpsDataConfirmCallback.IsNull ())
+      if(m_lrWpanMacAnState == MAC_AN_SENDING)
+      {
+        m_lrWpanMacAnState = MAC_AN_NP;
+        //Is trying to send AN command, but channel access fail
+        NS_LOG_DEBUG ( this << " cannot find clear channel for AN");
+        McpsAnConfirmParams confirm;
+        confirm.m_status = IEEE802154_CHANNEL_ACCESS_FAILURE;
+        m_macTxDropTrace(AnPacketAssemble());
+        if(!m_mcpsAnConfirmCallback.IsNull())
         {
-          m_mcpsDataConfirmCallback (confirmParams);
+          m_mcpsAnConfirmCallback(confirm);
         }
-      // remove the copy of the packet that was just sent
-      RemoveFirstTxQElement ();
+        m_anProcessData = {};
+        m_txPkt = 0;//allow check queue works
+      }
+      else
+      {
+        NS_ASSERT (m_txPkt);
 
-      ChangeMacState (MAC_IDLE);
+        // cannot find a clear channel, drop the current packet.
+        NS_LOG_DEBUG ( this << " cannot find clear channel");
+        confirmParams.m_msduHandle = m_txQueue.front ()->txQMsduHandle;
+        confirmParams.m_status = IEEE_802_15_4_CHANNEL_ACCESS_FAILURE;
+        m_macTxDropTrace (m_txPkt);
+        if (!m_mcpsDataConfirmCallback.IsNull ())
+          {
+            m_mcpsDataConfirmCallback (confirmParams);
+          }
+        // remove the copy of the packet that was just sent
+        RemoveFirstTxQElement ();
+      }
+      //ChangeMacState (MAC_IDLE); //Is this correct???, I just comment this line and add below 2 lines. Xiao Wang
+      m_setMacState.Cancel ();
+      m_setMacState = Simulator::ScheduleNow (&LrWpanMac::SetLrWpanMacState, this, MAC_IDLE);
     }
 }
 
@@ -1105,40 +1303,48 @@ LrWpanMac::SetMacMaxFrameRetries (uint8_t retries)
 void
 LrWpanMac::McpsAnRequest (McpsAnRequestParams params)
 {
-  Ptr<Packet> packet = Create<Packet> ();
-  LrWpanMacCmdAnHeader cmdAnHdr(params.m_GP, params.m_SP);
-  
-  //add Mac Command Header
-  packet->AddHeader(cmdAnHdr);
-
-  //set up mac header
-  LrWpanMacHeader macHdr (LrWpanMacHeader::LRWPAN_MAC_COMMAND, m_macDsn.GetValue ());
-  macHdr.SetCmdIdentifier(LrWpanMacHeader::LRWPAN_MAC_CMD_ASSESS_CONTROL);
-  m_macDsn++;
-
-  /* config 1 */
-  macHdr.SetPanIdComp();
-  //setting src address,
-  macHdr.SetSrcAddrMode(SHORT_ADDR);
-  macHdr.SetSrcAddrFields (GetPanId (), GetShortAddress ());
-  macHdr.SetDstAddrMode(SHORT_ADDR);
-  macHdr.SetSrcAddrFields (GetPanId (), Mac16Address("ff:ff"));
- 
-  /*
-  macHdr.SetNoPanIdComp();
-  macHdr.SetSrcAddrMode(NO_PANID_ADDR);
-  macHdr.SetDstAddrMode(NO_PANID_ADDR);
-  */
-
-  macHdr.SetSecDisable ();
-  macHdr.SetNoAckReq();
-
-  //add mac header.
-  packet->AddHeader(macHdr);
-
   /**
    *  finish the packet setting up
    */
+
+  //setting AN state data 
+  m_anProcessData.m_AN = params;
+  m_anProcessData.startTime = ns3::Now();
+  m_anProcessData.GpExpireTime = m_anProcessData.startTime + SymbolToTime(params.m_GpExpire);
+  if(m_lrWpanMacAnState == MAC_AN_SENDING)
+  {
+
+    //TODO..
+    //state error. the device a
+    NS_FATAL_ERROR("not allow to send AN during MAC_AN_SENDING state");
+    return;
+  }
+  
+  //cancel all the the pending AN event befere change m_lrWpanMacAnState to MAC_AN_SENDING
+  m_macAnStateEvent.Cancel();
+  //change MacAnState
+  m_lrWpanMacAnState = MAC_AN_SENDING;
+  if(m_lrWpanMacState == MAC_IDLE)
+  {m_setMacState.Cancel ();
+    //start sending progress imediately.
+    SetLrWpanMacState(MAC_CSMA);
+  }
+  else if(m_lrWpanMacState == MAC_CSMA)
+  {
+    //AN has the priority, thus cancel CSMA and reset m_setMacState and try send  AN
+    //cancel CSMA
+    m_csmaCa->Cancel ();
+    // Cancel any pending MAC state change, ACKs have higher priority.
+    m_setMacState.Cancel ();
+    m_txPkt = 0;//allow check queue works
+    ChangeMacState(MAC_IDLE); // reset the mac state before setLrWpanMacState to MAC_CSMA to avoid Asset error
+    SetLrWpanMacState(MAC_CSMA);
+  }else
+  {
+    //delay send, until entry MAC_IDLE state or enter csma state
+    m_lrWpanMacAnState = MAC_AN_PENDING;
+  }
+
 }
 
 void
