@@ -1133,7 +1133,7 @@ LrWpanMac::PlmeSetTRXStateConfirm (LrWpanPhyEnumeration status)
       {
         Time FrameSendingDuration = SymbolToTime(GetFrameDuration(AnPacketAssemble()->GetSize()));
         Time priorityEndTime = m_anProcessData.GpExpireTime - FrameSendingDuration;
-        m_csmaCa->StartPriority (priorityEndTime);//start priority CSMA for AN
+        m_csmaCa->StartPriority (priorityEndTime,m_anProcessData.isImmediate);//start priority CSMA for AN
       }
       else m_csmaCa->Start ();
     }
@@ -1298,10 +1298,18 @@ LrWpanMac::SetMacMaxFrameRetries (uint8_t retries)
   m_macMaxFrameRetries = retries;
 }
 
-
-
 void
 LrWpanMac::McpsAnRequest (McpsAnRequestParams params)
+{
+  McpsAnRequestRaw(params,false);
+}
+void
+LrWpanMac::McpsAnRequestImmediate (McpsAnRequestParams params)
+{
+  McpsAnRequestRaw(params,true);
+}
+void
+LrWpanMac::McpsAnRequestRaw (McpsAnRequestParams params, bool immediate)
 {
   /**
    *  finish the packet setting up
@@ -1311,6 +1319,7 @@ LrWpanMac::McpsAnRequest (McpsAnRequestParams params)
   m_anProcessData.m_AN = params;
   m_anProcessData.startTime = ns3::Now();
   m_anProcessData.GpExpireTime = m_anProcessData.startTime + SymbolToTime(params.m_GpExpire);
+  m_anProcessData.isImmediate = immediate;
   if(m_lrWpanMacAnState == MAC_AN_SENDING)
   {
 

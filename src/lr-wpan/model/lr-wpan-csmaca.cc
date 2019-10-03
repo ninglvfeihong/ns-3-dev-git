@@ -219,7 +219,7 @@ LrWpanCsmaCa::Start ()
   */
 }
 void
-LrWpanCsmaCa::StartPriority (const ns3::Time &priorityEndTime)
+LrWpanCsmaCa::StartPriority (const ns3::Time &priorityEndTime, bool immediate)
 {
   m_NB = 0;
   m_isPriority = true;
@@ -232,9 +232,15 @@ LrWpanCsmaCa::StartPriority (const ns3::Time &priorityEndTime)
     }
   else
     {
-      m_BE = m_priorityBE;
+      if(immediate) m_BE=0;
+      else m_BE = m_priorityBE;
       m_randomBackoffEvent = Simulator::ScheduleNow (&LrWpanCsmaCa::RandomBackoffDelay, this);
     }
+}
+void
+LrWpanCsmaCa::StartPriority (const ns3::Time &priorityEndTime)
+{
+  StartPriority(priorityEndTime, false);
 }
 void
 LrWpanCsmaCa::Cancel ()
@@ -281,6 +287,7 @@ LrWpanCsmaCa::RandomBackoffDelay ()
           return;
         }
       }
+      if(m_BE == 0) randomBackoff = Seconds(0); //m_BE==0, indicate isImmediate is true
       m_requestCcaEvent = Simulator::Schedule (randomBackoff, &LrWpanCsmaCa::RequestCCA, this);
     }
   else
@@ -382,6 +389,11 @@ LrWpanCsmaCa::PlmeCcaConfirm (LrWpanPhyEnumeration status)
             m_BE = std::min (static_cast<uint16_t> (m_BE + 1), static_cast<uint16_t> (m_macMaxBE));
             m_NB++;
           }
+          else
+          {
+            m_BE = m_priorityBE;
+          }
+          
           if (m_NB > m_macMaxCSMABackoffs)
             {
               // no channel found so cannot send pkt

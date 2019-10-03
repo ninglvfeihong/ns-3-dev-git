@@ -260,6 +260,7 @@ struct McpsAnRequestProcessData
   Ptr<Packet> m_tx;         //!< the packet that is being sent
   ns3::Time startTime;      //!< record when the MCPS-AP.request is called to recaculate GFP
   ns3::Time GpExpireTime;   //!< record when the MCPS-AP.request is called to recaculate GFP
+  bool  isImmediate;
 };
 
 
@@ -428,13 +429,14 @@ public:
   void McpsDataRequest (McpsDataRequestParams params, Ptr<Packet> p);
  
  /**
-   *  IEEE 802.15.4-2006, section 7.1.1.1
    *  MCPS-AN.request
    *  Request to Access Notification command, proposed by Xiao Wang.
    *
    *  \param params the request parameters
    */
-  void McpsAnRequest (McpsAnRequestParams params);
+  void McpsAnRequest (McpsAnRequestParams params); //equate immediate = false
+  void McpsAnRequestImmediate (McpsAnRequestParams params); //equate immediate = false
+  void McpsAnRequestRaw (McpsAnRequestParams params, bool immediate);
 
   /**
    * Set the CSMA/CA implementation to be used by the MAC.
