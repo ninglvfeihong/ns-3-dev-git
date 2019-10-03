@@ -179,6 +179,12 @@ public:
   void Start (void);
 
   /**
+   * Start priority CSMA-CA algorithm (step 1), initialize NB, BE for unslotted
+   * CSMA-CA. proposed by Xiao Wang, AN command
+   */
+  void StartPriority (const ns3::Time &priorityEndTime);
+
+  /**
    * Cancel CSMA-CA algorithm.
    */
   void Cancel (void);
@@ -285,6 +291,16 @@ private:
   uint8_t m_BE;
 
   /**
+   * Priority Backoff exponent.
+   */
+  uint8_t m_priorityBE;
+
+  /**
+   * Priority Backoff exponent.
+   */
+  ns3::Time m_priorityEndTime;
+
+  /**
    * Battery Life Extension.
    */
   bool m_BLE;
@@ -335,6 +351,11 @@ private:
    * reporting the channel status to the MAC while canceling the CSMA algorithm.
    */
   bool m_ccaRequestRunning;
+
+  /**
+   * is Priority CSMA or not for AN frame
+   */
+  bool m_isPriority;
 };
 
 }
