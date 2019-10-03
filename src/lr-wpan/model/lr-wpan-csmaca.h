@@ -183,6 +183,7 @@ public:
    * CSMA-CA. proposed by Xiao Wang, AN command
    */
   void StartPriority (const ns3::Time &priorityEndTime);
+  void StartPriority (const ns3::Time &priorityEndTime, bool imediate);
 
   /**
    * Cancel CSMA-CA algorithm.
