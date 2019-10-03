@@ -44,6 +44,7 @@ LrWpanCsmaCa::GetTypeId (void)
 }
 
 LrWpanCsmaCa::LrWpanCsmaCa ()
+: m_priorityEndTime(0)
 {
   // TODO-- make these into ns-3 attributes
 
@@ -58,6 +59,8 @@ LrWpanCsmaCa::LrWpanCsmaCa ()
   m_random = CreateObject<UniformRandomVariable> ();
   m_BE = m_macMinBE;
   m_ccaRequestRunning = false;
+  m_isPriority = false;
+  m_priorityBE = 2;
 }
 
 LrWpanCsmaCa::~LrWpanCsmaCa ()
@@ -185,6 +188,7 @@ LrWpanCsmaCa::Start ()
 {
   NS_LOG_FUNCTION (this);
   m_NB = 0;
+  m_isPriority = false;
   if (IsSlottedCsmaCa ())
     {
       m_CW = 2;
@@ -214,7 +218,24 @@ LrWpanCsmaCa::Start ()
   *        Backoff.m_slotTime = m_backoffPeriod;
   */
 }
-
+void
+LrWpanCsmaCa::StartPriority (const ns3::Time &priorityEndTime)
+{
+  m_NB = 0;
+  m_isPriority = true;
+  m_priorityEndTime = priorityEndTime;
+  if (IsSlottedCsmaCa ())
+    {
+      // TODO: What to do when we call this in slotted CSMA/CA?
+      // we currently don't consider slotted CSMA/CA
+      NS_FATAL_ERROR ("Error changing transceiver state");
+    }
+  else
+    {
+      m_BE = m_priorityBE;
+      m_randomBackoffEvent = Simulator::ScheduleNow (&LrWpanCsmaCa::RandomBackoffDelay, this);
+    }
+}
 void
 LrWpanCsmaCa::Cancel ()
 {
@@ -246,6 +267,20 @@ LrWpanCsmaCa::RandomBackoffDelay ()
   if (IsUnSlottedCsmaCa ())
     {
       NS_LOG_LOGIC ("Unslotted:  requesting CCA after backoff of " << randomBackoff.GetMicroSeconds () << " us");
+      if(m_isPriority){
+        Time ccaTime = Seconds (8.0 / m_mac->GetPhy ()->GetDataOrSymbolRate (false));
+        if(randomBackoff+ccaTime  + ns3::Now() > m_priorityEndTime) 
+        {
+          //not engouth time for priority CSMA
+          NS_LOG_DEBUG ("Channel access failure");
+          if (!m_lrWpanMacStateCallback.IsNull ())
+              {
+                NS_LOG_LOGIC ("Notifying MAC of Channel access failure");
+                m_lrWpanMacStateCallback (CHANNEL_ACCESS_FAILURE);
+              }
+          return;
+        }
+      }
       m_requestCcaEvent = Simulator::Schedule (randomBackoff, &LrWpanCsmaCa::RequestCCA, this);
     }
   else
@@ -342,8 +377,11 @@ LrWpanCsmaCa::PlmeCcaConfirm (LrWpanPhyEnumeration status)
             {
               m_CW = 2;
             }
-          m_BE = std::min (static_cast<uint16_t> (m_BE + 1), static_cast<uint16_t> (m_macMaxBE));
-          m_NB++;
+          if(! m_isPriority)
+          {
+            m_BE = std::min (static_cast<uint16_t> (m_BE + 1), static_cast<uint16_t> (m_macMaxBE));
+            m_NB++;
+          }
           if (m_NB > m_macMaxCSMABackoffs)
             {
               // no channel found so cannot send pkt
