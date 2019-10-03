@@ -333,7 +333,7 @@ main (int argc, char *argv[])
   recver->GetDevice(0)->SetReceiveCallback(MakeCallback(&xiao::NetDevCb));
 
   //stupid way scheduling packet seding
-  xiao::LrWpanSendScheduleBroadcast(sender, MilliSeconds(150),MilliSeconds(200),MilliSeconds(1));
+  //xiao::LrWpanSendScheduleBroadcast(sender, MilliSeconds(150),MilliSeconds(200),MilliSeconds(1));
   xiao::LrWpanSendScheduleBroadcast(recver, MilliSeconds(150),MilliSeconds(200),MilliSeconds(1));
   //xiao::LrWpanSendScheduleBroadcastRandom(sender, MilliSeconds(150),MilliSeconds(300),MilliSeconds(10));
   //xiao::LrWpanSendSchedule(sender,recver, MilliSeconds(150),MilliSeconds(300),MilliSeconds(2));
@@ -344,7 +344,7 @@ main (int argc, char *argv[])
   xiao_helper.EnableLrWpanShowPhyTraceRxDrop(recver->GetDevice(0));
 
   //schedule AN
-  xiao::LrWpanSendScheduleAn(lrDevices.Get(1), MilliSeconds(150),MilliSeconds(500),MilliSeconds(60));
+  xiao::LrWpanSendScheduleAn(lrDevices.Get(0), MilliSeconds(150),MilliSeconds(500),MilliSeconds(60));
 
 
   ns3::Ptr<ns3::SpectrumChannel> channel = lrWpanHelper.GetChannel();

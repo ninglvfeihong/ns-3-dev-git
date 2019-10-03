@@ -1,0 +1,17 @@
+~/ns3(master*) » ./waf --run scratch/lrwpan_AN_test                                                                                                                                               xiao@xiao-xps15
+Waf: Entering directory `/home/xiao/ns3/build'
+[2628/2685] Compiling scratch/lrwpan_AN_test.cc
+[2645/2685] Linking build/scratch/lrwpan_AN_test
+Waf: Leaving directory `/home/xiao/ns3/build'
+Build commands will be stored in build/compile_commands.json
+'build' finished successfully (5.633s)
+My first hello word!
++0.000000000s 50 lr-wpan packets scheduled
++0.000000000s 6 lr-wpan packets scheduled
++0.151920033s Phy Received(n/id):1/1
++0.211600033s Phy Received(n/id):2/2
++0.271920033s Phy Received(n/id):3/3
++0.330960033s Phy Received(n/id):4/4
++0.390960033s Phy Received(n/id):5/5
++0.451280033s Phy Received(n/id):6/6
+
