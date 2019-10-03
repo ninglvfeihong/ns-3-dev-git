@@ -482,7 +482,7 @@ LrWpanMac::SymbolToTime(uint32_t symbolsNumber)
 inline uint32_t
 LrWpanMac::TimeToSymbol(Time time)
 {
-  return (uint32_t) ceil(time.GetMicroSeconds()* GetPhy ()->GetDataOrSymbolRate (false)/ 1000 / 1000);
+  return (uint32_t) ceil(time.GetSeconds()* GetPhy ()->GetDataOrSymbolRate (false));
 }
 
 inline uint32_t LrWpanMac::GetFrameDuration(uint32_t psduSize)
@@ -538,9 +538,9 @@ Ptr<Packet> LrWpanMac::AnPacketAssemble(void)
 
 
   
-  frameDuration = SymbolToTime(GetFrameDuration(macHdr.GetSerializedSize()+macHdr.GetSerializedSize()+macTrailer.GetSerializedSize()));
+  frameDuration = SymbolToTime(GetFrameDuration(cmdAnHdr.GetSerializedSize()+macHdr.GetSerializedSize()+macTrailer.GetSerializedSize()));
   if(ns3::Now()+frameDuration < m_anProcessData.GpExpireTime){
-    GP = TimeToSymbol( m_anProcessData.GpExpireTime - ns3::Now() - frameDuration);
+    GP = TimeToSymbol( m_anProcessData.GpExpireTime - ns3::Now() - frameDuration)/8;
   }else{
     GP = 0;
   }
