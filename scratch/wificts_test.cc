@@ -376,7 +376,7 @@ main (int argc, char *argv[])
   /////////////////////////////////
   // Configure WiFi
   /////////////////////////////////
-  uint32_t wifiStaNodesN = 1;
+  uint32_t wifiStaNodesN = 10;
   NodeContainer wifiNodes;
   NodeContainer wifiApNode;
   wifiApNode.Create(1);
@@ -439,19 +439,34 @@ main (int argc, char *argv[])
   //apDevices.Get(0)->GetObject<WifiNetDevice>()->GetMac()->GetObject<ApWifiMac>()->InjectCts(Seconds(0.03));
   Ptr<ApWifiMac> apMac = apDevices.Get(0)->GetObject<WifiNetDevice>()->GetMac()->GetObject<ApWifiMac>();
 
-    Simulator::Schedule(Seconds(0.15),&ApWifiMac::InjectCts,
-                      apMac,
-                      Seconds(0.02)); //broadcast without mac
-  Simulator::Schedule(Seconds(0.25),&ApWifiMac::InjectCts,
+    Simulator::Schedule(Seconds(3.5),&ApWifiMac::InjectCts,
                       apMac,
                       Seconds(0.03)); //broadcast without mac
-  Simulator::Schedule(Seconds(0.48),&ApWifiMac::InjectCts,
+    Simulator::Schedule(Seconds(3.6),&ApWifiMac::InjectCts,
+                      apMac,
+                      Seconds(0.03)); //broadcast without mac
+    Simulator::Schedule(Seconds(3.7),&ApWifiMac::InjectCts,
+                      apMac,
+                      Seconds(0.03)); //broadcast without mac
+    Simulator::Schedule(Seconds(3.8),&ApWifiMac::InjectCts,
+                      apMac,
+                      Seconds(0.03)); //broadcast without mac
+    Simulator::Schedule(Seconds(3.9),&ApWifiMac::InjectCts,
+                      apMac,
+                      Seconds(0.03)); //broadcast without mac
+  Simulator::Schedule(Seconds(4.0),&ApWifiMac::InjectCts,
+                      apMac,
+                      Seconds(0.03)); //broadcast without mac
+  Simulator::Schedule(Seconds(4.1),&ApWifiMac::InjectCts,
+                      apMac,
+                      Seconds(0.03)); //broadcast without mac
+  Simulator::Schedule(Seconds(4.2),&ApWifiMac::InjectCts,
                       apMac,
                       Seconds(0.0327)); //broadcast without mac
   apMac->SetCtsInjectSentCallback(MakeCallback (&InjectCtsCallback));
 
 
-/*
+
 
   Ipv4Address serverAddress = wifiApIpv4Interfaces.GetAddress (0);
   // Create HTTP server helper
@@ -499,7 +514,7 @@ main (int argc, char *argv[])
   clientApps.Stop (Seconds (60));
 
 
-  */
+  
 
 
 
@@ -509,7 +524,7 @@ main (int argc, char *argv[])
 
 
 
-
+/*
   //install application
   UdpEchoServerHelper echoServer (9);
 
@@ -544,13 +559,13 @@ main (int argc, char *argv[])
     echoClient1.Install (wifiApNode.Get(0));
   clientApps1.Start (MilliSeconds(220));
   clientApps1.Stop (Seconds (0.7));
+*/
 
 
-
-  Simulator::Stop (MilliSeconds (700));
-  xiao_helper.PlaceSpectrum(channel,Vector(5,1,0),Seconds(0.1),Seconds(0.7),MicroSeconds(1000));
+  Simulator::Stop (MilliSeconds (4500));
+  xiao_helper.PlaceSpectrum(channel,Vector(5,1,0),Seconds(3),Seconds(0),MicroSeconds(1000));
   //xiao_helper.ConfigStorShow();
-  xiao_helper.makeAnim();
+  //xiao_helper.makeAnim();
   Simulator::Run ();
   Simulator::Destroy ();
 }
