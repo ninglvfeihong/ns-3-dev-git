@@ -565,7 +565,7 @@ main (int argc, char *argv[])
   Simulator::Stop (MilliSeconds (4500));
   xiao_helper.PlaceSpectrum(channel,Vector(5,1,0),Seconds(3),Seconds(0),MicroSeconds(1000));
   //xiao_helper.ConfigStorShow();
-  //xiao_helper.makeAnim();
+  xiao_helper.makeAnim();
   Simulator::Run ();
   Simulator::Destroy ();
 }
