@@ -785,6 +785,18 @@ ApWifiMac::SendProbeResp (Mac48Address to)
 }
 
 void
+ApWifiMac::InjectCts (Time duration){
+  m_txop ->InjectCts(duration);
+}
+
+void
+ApWifiMac::SetCtsInjectSentCallback(MacLow::MaclowCtsInjectSentCallback cb)
+{
+  m_low -> SetCtsInjectSentCallback(cb);
+}
+
+
+void
 ApWifiMac::SendAssocResp (Mac48Address to, bool success, bool isReassoc)
 {
   NS_LOG_FUNCTION (this << to << success << isReassoc);
