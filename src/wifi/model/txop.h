@@ -238,6 +238,12 @@ public:
    * can be sent safely.
    */
   virtual void Queue (Ptr<const Packet> packet, const WifiMacHeader &hdr);
+  
+  /**
+   * inject a CTS frame with given duration
+   * 
+   */
+  void InjectCts (Time duration);
 
   /**
    * Sends CF frame to sta with address <i>addr</i>.

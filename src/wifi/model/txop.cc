@@ -313,9 +313,33 @@ Txop::Queue (Ptr<const Packet> packet, const WifiMacHeader &hdr)
   SocketPriorityTag priorityTag;
   packetCopy->RemovePacketTag (priorityTag);
   m_stationManager->PrepareForQueue (hdr.GetAddr1 (), &hdr, packetCopy);
-  m_queue->Enqueue (Create<WifiMacQueueItem> (packetCopy, hdr));
+  if(hdr.IsCts()) // the injected CTS
+    m_queue->PushFront(Create<WifiMacQueueItem> (packetCopy, hdr));
+  else
+    m_queue->Enqueue (Create<WifiMacQueueItem> (packetCopy, hdr));
   StartAccessIfNeeded ();
 }
+
+void
+Txop::InjectCts (Time duration)
+{
+  NS_LOG_FUNCTION (this << duration);
+
+  WifiMacHeader cts;
+  cts.SetType (WIFI_MAC_CTL_CTS);
+  cts.SetDsNotFrom ();
+  cts.SetDsNotTo ();
+  cts.SetNoMoreFragments ();
+  cts.SetNoRetry ();
+  cts.SetAddr1 (m_low->GetAddress());
+  cts.SetDuration (duration);
+
+  Ptr<Packet> packet = Create<Packet> ();
+  
+  Queue (packet, cts);
+
+}
+
 
 int64_t
 Txop::AssignStreams (int64_t stream)

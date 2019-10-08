@@ -244,6 +244,11 @@ MacLow::CancelAllEvents (void)
 }
 
 void
+MacLow::SetCtsInjectSentCallback(MaclowCtsInjectSentCallback cb)
+{
+  m_ctsInjectSentCallback = cb;
+}
+void
 MacLow::SetPhy (const Ptr<WifiPhy> phy)
 {
   m_phy = phy;
@@ -516,6 +521,11 @@ MacLow::StartTransmission (Ptr<WifiMacQueueItem> mpdu,
   CancelAllEvents ();
   m_currentTxop = txop;
   m_txParams = params;
+  if(mpdu->GetPacket()->GetSize() ==0 && hdr.IsCts()) 
+  {
+    //injected CTS packet without ack
+    m_txParams.DisableAck();
+  }
   if (hdr.IsCtl ())
     {
       m_currentTxVector = GetRtsTxVector  (mpdu);
@@ -1881,7 +1891,21 @@ MacLow::SendDataPacket (void)
               duration += GetAckDuration (m_currentPacket->GetAddr1 (), m_currentTxVector);
             }
         }
-      m_currentPacket->SetDuration (duration);
+      if(m_currentPacket->GetSize() ==14 && m_currentPacket->GetHeader(0).IsCts())
+      {
+        //injected CTS
+        Time duration = m_currentPacket->GetHeader(0).GetDuration();
+        Time txDuration = m_phy->CalculateTxDuration (m_currentPacket->GetSize(),m_currentTxVector, m_phy->GetFrequency ());
+        m_currentPacket->SetDuration(duration);
+        //NotifyNav(mpdu->GetPacket(), hdr);
+        //bool navUpdated = DoNavStartNow (hdr.GetDuration());
+        //force to update the NAV. further consideration is required, whether this causes unexpected problem? but for experiment, it is OK.
+        DoNavStartNow (duration + txDuration);
+        //ns3::Scheduler(txDuration,)
+        if(!m_ctsInjectSentCallback.IsNull()) Simulator::Schedule(txDuration,&MacLow::m_ctsInjectSentCallback,this, duration);
+      }else{
+        m_currentPacket->SetDuration (duration);
+      }
     }
   else
     {

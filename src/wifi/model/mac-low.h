@@ -65,6 +65,11 @@ public:
    */
   typedef Callback<void, Ptr<Packet>, const WifiMacHeader*> MacLowRxCallback;
 
+  /**
+   * typedef for CTS injected and sent
+   */
+  typedef Callback<void, ns3::Time> MaclowCtsInjectSentCallback;
+
   MacLow ();
   virtual ~MacLow ();
 
@@ -73,6 +78,12 @@ public:
    * \return The TypeId.
    */
   static TypeId GetTypeId (void);
+  /**
+   * 
+   * Set callback for Cts inject sent. 
+   * The callback will be invoked once the cts has been transmitted successed.
+   */
+  void SetCtsInjectSentCallback(MaclowCtsInjectSentCallback cb);
 
   /**
    * Set up WifiPhy associated with this MacLow.
@@ -956,6 +967,8 @@ private:
   WifiTxVector m_currentTxVector;        //!< TXVECTOR used for the current packet transmission
 
   CfAckInfo m_cfAckInfo; //!< Info about piggyback ACKs used in PCF
+
+  MaclowCtsInjectSentCallback m_ctsInjectSentCallback;
 };
 
 } //namespace ns3

@@ -24,6 +24,7 @@
 #define AP_WIFI_MAC_H
 
 #include "infrastructure-wifi-mac.h"
+#include "mac-low.h"
 
 namespace ns3 {
 
@@ -152,6 +153,16 @@ public:
    */
   int64_t AssignStreams (int64_t stream);
 
+  /**
+   * inject a CTS frame with given duration
+   * 
+   */
+  void InjectCts (Time duration);
+  /**
+   * inject a CTS frame with given duration
+   * 
+   */
+  void SetCtsInjectSentCallback(MacLow::MaclowCtsInjectSentCallback cb);
 
 private:
   void Receive (Ptr<Packet> packet, const WifiMacHeader *hdr);
