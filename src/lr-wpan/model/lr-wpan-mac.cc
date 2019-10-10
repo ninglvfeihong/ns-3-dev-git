@@ -473,13 +473,13 @@ LrWpanMac::CheckQueue ()
     }
 }
 
-inline Time
+Time
 LrWpanMac::SymbolToTime(uint32_t symbolsNumber)
 {
-  return MicroSeconds (symbolsNumber* 1000 * 1000/GetPhy ()->GetDataOrSymbolRate (false));
+  return Seconds (symbolsNumber*1.0/GetPhy ()->GetDataOrSymbolRate (false));
 }
 
-inline uint32_t
+uint32_t
 LrWpanMac::TimeToSymbol(Time time)
 {
   return (uint32_t) ceil(time.GetSeconds()* GetPhy ()->GetDataOrSymbolRate (false));
@@ -496,19 +496,10 @@ inline uint32_t LrWpanMac::GetSendingDurationMin(uint32_t psduSize)
   return GetFrameDuration(psduSize) + 8 /*CCA duration*/ + ns3::LrWpanPhy::aTurnaroundTime;
 }
 
-Ptr<Packet> LrWpanMac::AnPacketAssemble(void)
+void
+LrWpanMac::SetupMacHdrForAn(LrWpanMacHeader &macHdr)
 {
-  Ptr<Packet> packet = Create<Packet> ();
-  uint8_t GP=0;
-  Time frameDuration;
-  LrWpanMacCmdAnHeader cmdAnHdr(GP, m_anProcessData.m_AN.m_SPF);
-  //add Mac Command Header
-
-  //set up mac header
-  LrWpanMacHeader macHdr (LrWpanMacHeader::LRWPAN_MAC_COMMAND, m_macDsn.GetValue ());
   macHdr.SetCmdIdentifier(LrWpanMacHeader::LRWPAN_MAC_CMD_ASSESS_CONTROL);
-  m_macDsn++;
-
   /* config 1 */
   macHdr.SetPanIdComp();
   //setting src address,
@@ -525,8 +516,19 @@ Ptr<Packet> LrWpanMac::AnPacketAssemble(void)
 
   macHdr.SetSecDisable ();
   macHdr.SetNoAckReq();
+}
+Ptr<Packet> LrWpanMac::AnPacketAssemble(void)
+{
+  Ptr<Packet> packet = Create<Packet> ();
+  uint8_t GP=0;
+  Time frameDuration;
+  LrWpanMacCmdAnHeader cmdAnHdr(GP, m_anProcessData.m_AN.m_SPF);
+  //add Mac Command Header
 
-
+  //set up mac header
+  LrWpanMacHeader macHdr (LrWpanMacHeader::LRWPAN_MAC_COMMAND, m_macDsn.GetValue ());
+  m_macDsn++;
+  SetupMacHdrForAn(macHdr);
 
   LrWpanMacTrailer macTrailer;
   // Calculate FCS if the global attribute ChecksumEnable is set.
@@ -556,7 +558,7 @@ ns3::Time
 LrWpanMac::FrameSendEstimation(Ptr<Packet> p)
 {
   ns3::Time result = Seconds(0);
-  result += SymbolToTime(GetFrameDuration(m_txPkt->GetSize()));
+  result += SymbolToTime(GetFrameDuration(p->GetSize()));
   result += SymbolToTime(GetPhy()->aTurnaroundTime);
   LrWpanMacHeader macHdr;
   p->PeekHeader(macHdr);
@@ -568,6 +570,39 @@ LrWpanMac::FrameSendEstimation(Ptr<Packet> p)
   }
   return result;
 }
+
+Time
+LrWpanMac::GetMinAnSendingTimeRequired(void)
+{
+  Ptr<Packet> packet = Create<Packet> ();
+  LrWpanMacCmdAnHeader cmdAnHdr(10,10);
+  //add Mac Command Header
+
+  //set up mac header
+  LrWpanMacHeader macHdr (LrWpanMacHeader::LRWPAN_MAC_COMMAND, m_macDsn.GetValue ());
+  m_macDsn++;
+  SetupMacHdrForAn(macHdr);
+
+  LrWpanMacTrailer macTrailer;
+  // Calculate FCS if the global attribute ChecksumEnable is set.
+  if (Node::ChecksumEnabled ())
+    {
+      macTrailer.EnableFcs (true);
+      macTrailer.SetFcs (packet);
+    }
+  packet->AddHeader(cmdAnHdr); 
+  packet->AddHeader(macHdr);
+  packet->AddTrailer (macTrailer);
+  return FrameSendEstimation(packet);
+}
+
+
+Time
+LrWpanMac::GetMaxAnSp(void)
+{
+  return SymbolToTime(64 * 0xff);
+}
+  
 
 void
 LrWpanMac::ChangeWpanMacAnState (LrWpanMacAnState anState)
@@ -814,7 +849,7 @@ LrWpanMac::PdDataIndication (uint32_t psduLength, Ptr<Packet> p, uint8_t lqi)
                                     
                   if(m_lrWpanMacAnState == MAC_AN_SP)
                   {
-                    //previously surpressed, thus resume transmission from data queue
+                    //previously suppressed, thus resume transmission from data queue
                     m_setMacState.Cancel ();
                     m_txPkt = 0;//allow check queue works
                     m_setMacState = Simulator::ScheduleNow (&LrWpanMac::SetLrWpanMacState, this, MAC_IDLE);
@@ -990,7 +1025,7 @@ LrWpanMac::PdDataConfirm (LrWpanPhyEnumeration status)
     {
       m_lrWpanMacAnState = MAC_AN_GP;
       m_macTxOkTrace (m_anProcessData.m_tx);
-      if (!m_mcpsDataConfirmCallback.IsNull ())
+      if (!m_mcpsAnConfirmCallback.IsNull ())
         {
           McpsAnConfirmParams confirmParams;
           confirmParams.m_status = IEEE802154_SUCCESS;
@@ -1009,7 +1044,7 @@ LrWpanMac::PdDataConfirm (LrWpanPhyEnumeration status)
     {
       m_lrWpanMacAnState = MAC_AN_NP;
       m_macTxDropTrace (m_anProcessData.m_tx);
-      if (!m_mcpsDataConfirmCallback.IsNull ())
+      if (!m_mcpsAnConfirmCallback.IsNull ())
         {
           McpsAnConfirmParams confirmParams;
           confirmParams.m_status = IEEE802154_FRAME_TOO_LONG;
