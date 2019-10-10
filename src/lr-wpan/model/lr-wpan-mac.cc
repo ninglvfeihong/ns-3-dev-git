@@ -610,6 +610,17 @@ LrWpanMac::ChangeWpanMacAnState (LrWpanMacAnState anState)
   if(m_lrWpanMacAnState== MAC_AN_GP && anState == MAC_AN_SP)
   {
     m_lrWpanMacAnState = MAC_AN_SP;
+    if(m_lrWpanMacState == MAC_CSMA)
+    {
+      //cancel the CSMA, or it will return CSMA fail and cause send fail
+      //thus give up transmission, and retransmission later.
+      ChangeMacState(MAC_IDLE);
+      m_txPkt = 0;
+      m_setMacState.Cancel();
+      m_csmaCa->Cancel ();
+      
+    }
+
     m_macAnStateEvent.Cancel();
     ns3::Time delay = SymbolToTime(m_anProcessData.m_AN.m_SPF*64);
     delay += m_anProcessData.GpExpireTime-ns3::Now();
