@@ -39,6 +39,7 @@ namespace ns3 {
 
 class Packet;
 class LrWpanCsmaCa;
+class LrWpanMacHeader;
 
 /**
  * \defgroup lr-wpan LR-WPAN models
@@ -84,7 +85,7 @@ typedef enum
 {
   MAC_AN_NP,                    //!< MAC_AN_NP Mac normal period state
   MAC_AN_GP,                    //!< MAC_AN_GP Mac guaranteed period state
-  MAC_AN_SP,                    //!< MAC_AN_SP Mac surpressed period state
+  MAC_AN_SP,                    //!< MAC_AN_SP Mac suppressed period state
   MAC_AN_SENDING,                //!< AN sending state. 
   MAC_AN_PENDING                //!< AN pending state. An waited to be sent
 } LrWpanMacAnState;
@@ -235,7 +236,7 @@ struct McpsAnRequestParams
   {
   }
   uint16_t m_GpExpire;             //!< Guaranteed period expire time -- in symbols
-  uint16_t m_SPF;                   //!< Surpressed period field -- per 64 symbols
+  uint8_t m_SPF;                   //!< Surpressed period field -- per 64 symbols
 };
 
 /**
@@ -435,8 +436,20 @@ public:
    *  \param params the request parameters
    */
   void McpsAnRequest (McpsAnRequestParams params); //equate immediate = false
-  void McpsAnRequestImmediate (McpsAnRequestParams params); //equate immediate = false
+  void McpsAnRequestImmediate (McpsAnRequestParams params); //equate immediate = true
   void McpsAnRequestRaw (McpsAnRequestParams params, bool immediate);
+
+  /**
+   *get the time duration by Symbol Numbers. 
+   * 
+   */
+  Time SymbolToTime(uint32_t symbolsNumber);
+  
+  /**
+   *get Symbol Numbers by the time duration, round up method. 
+   * 
+   */
+  uint32_t TimeToSymbol(Time time);
 
   /**
    * Set the CSMA/CA implementation to be used by the MAC.
@@ -681,6 +694,15 @@ public:
   void SetMacMaxFrameRetries (uint8_t retries);
 
   /**
+   *  minimum time required to AN frame.
+   * including: 1 CCA + 1 aTurnaroundTime + SHR (preamble+SFD) + PHR + MacHdr + AN
+   */
+  Time GetMinAnSendingTimeRequired(void);
+  /**
+   *  Max SP (suppressed period)
+   */
+  Time GetMaxAnSp(void);
+  /**
    * TracedCallback signature for sent packets.
    *
    * \param [in] packet The packet.
@@ -759,18 +781,6 @@ private:
   void CheckQueue (void);
 
   /**
-   *get the time duration by Symbol Numbers. 
-   * 
-   */
-  inline Time SymbolToTime(uint32_t symbolsNumber);
-  
-  /**
-   *get Symbol Numbers by the time duration, round up method. 
-   * 
-   */
-  inline uint32_t TimeToSymbol(Time time);
-
-  /**
    *get the time duration of AN frame in Symbols, including SHR PHR pluse given psdusize
    * 
    */
@@ -781,6 +791,10 @@ private:
    * 
    */
   inline uint32_t GetSendingDurationMin(uint32_t psduSize);
+  /**
+   * Set up Mac Hdr for AN frame
+   */
+  void SetupMacHdrForAn(LrWpanMacHeader &macHdr);
   /**
    * assemble a An Packet according to current time and given parameter
    * 
