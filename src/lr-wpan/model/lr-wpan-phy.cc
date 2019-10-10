@@ -609,7 +609,8 @@ LrWpanPhy::PlmeCcaRequest (void)
 
   if (m_trxState == IEEE_802_15_4_PHY_RX_ON || m_trxState == IEEE_802_15_4_PHY_BUSY_RX)
     {
-      m_ccaPeakPower = 0.0;
+      //m_ccaPeakPower = 0.0;
+      m_ccaPeakPower = LrWpanSpectrumValueHelper::TotalAvgPower (m_signal->GetSignalPsd (), m_phyPIBAttributes.phyCurrentChannel);
       Time ccaTime = Seconds (8.0 / GetDataOrSymbolRate (false));
       m_ccaRequest = Simulator::Schedule (ccaTime, &LrWpanPhy::EndCca, this);
     }
