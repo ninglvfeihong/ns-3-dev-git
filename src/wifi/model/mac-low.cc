@@ -249,6 +249,11 @@ MacLow::SetCtsInjectSentCallback(MaclowCtsInjectSentCallback cb)
   m_ctsInjectSentCallback = cb;
 }
 void
+MacLow::SetCtsInjectStartSendingCallback(MaclowCtsInjectSentCallback cb)
+{
+  m_ctsInjectStartSendingCallback = cb;
+}
+void
 MacLow::SetPhy (const Ptr<WifiPhy> phy)
 {
   m_phy = phy;
@@ -1903,6 +1908,7 @@ MacLow::SendDataPacket (void)
         DoNavStartNow (duration + txDuration);
         //ns3::Scheduler(txDuration,)
         if(!m_ctsInjectSentCallback.IsNull()) Simulator::Schedule(txDuration,&MacLow::m_ctsInjectSentCallback,this, duration);
+        if(!m_ctsInjectStartSendingCallback.IsNull()) Simulator::ScheduleNow(&MacLow::m_ctsInjectStartSendingCallback,this, duration);
       }else{
         m_currentPacket->SetDuration (duration);
       }

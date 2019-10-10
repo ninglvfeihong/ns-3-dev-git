@@ -84,6 +84,12 @@ public:
    * The callback will be invoked once the cts has been transmitted successed.
    */
   void SetCtsInjectSentCallback(MaclowCtsInjectSentCallback cb);
+  /**
+   * 
+   * Set callback for Cts inject when Cts is starting sending. 
+   * The callback will be invoked once the cts is starting transmitting.
+   */
+  void SetCtsInjectStartSendingCallback(MaclowCtsInjectSentCallback cb);
 
   /**
    * Set up WifiPhy associated with this MacLow.
@@ -968,7 +974,8 @@ private:
 
   CfAckInfo m_cfAckInfo; //!< Info about piggyback ACKs used in PCF
 
-  MaclowCtsInjectSentCallback m_ctsInjectSentCallback;
+  MaclowCtsInjectSentCallback m_ctsInjectStartSendingCallback; //start sending callback
+  MaclowCtsInjectSentCallback m_ctsInjectSentCallback;        //CTS is sent callback
 };
 
 } //namespace ns3

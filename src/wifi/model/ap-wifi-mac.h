@@ -159,10 +159,16 @@ public:
    */
   void InjectCts (Time duration);
   /**
-   * inject a CTS frame with given duration
+   * set callback, invoked when the injected CTS has been sent
    * 
    */
   void SetCtsInjectSentCallback(MacLow::MaclowCtsInjectSentCallback cb);
+  /**
+   * set callbak, invoked when the injected CTS is start sending
+   * 
+   */
+  void SetCtsInjectStartSendingCallback(MacLow::MaclowCtsInjectSentCallback cb);
+
 
 private:
   void Receive (Ptr<Packet> packet, const WifiMacHeader *hdr);

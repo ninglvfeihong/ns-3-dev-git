@@ -794,7 +794,11 @@ ApWifiMac::SetCtsInjectSentCallback(MacLow::MaclowCtsInjectSentCallback cb)
 {
   m_low -> SetCtsInjectSentCallback(cb);
 }
-
+void
+ApWifiMac::SetCtsInjectStartSendingCallback(MacLow::MaclowCtsInjectSentCallback cb)
+{
+  m_low -> SetCtsInjectStartSendingCallback(cb);
+}
 
 void
 ApWifiMac::SendAssocResp (Mac48Address to, bool success, bool isReassoc)
