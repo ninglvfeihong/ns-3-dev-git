@@ -313,8 +313,15 @@ Txop::Queue (Ptr<const Packet> packet, const WifiMacHeader &hdr)
   SocketPriorityTag priorityTag;
   packetCopy->RemovePacketTag (priorityTag);
   m_stationManager->PrepareForQueue (hdr.GetAddr1 (), &hdr, packetCopy);
-  if(hdr.IsCts()) // the injected CTS
-    m_queue->PushFront(Create<WifiMacQueueItem> (packetCopy, hdr));
+  if(hdr.IsCts())
+  { // the injected CTS
+    Ptr<WifiMacQueueItem> item = Create<WifiMacQueueItem> (packetCopy, hdr);
+    QueueSize size = m_queue->GetMaxSize();
+    //temporarily enlage queue max size, thus the injected CTS will never be droped
+    m_queue->SetMaxQueueSize(size+item);
+    m_queue->PushFront(item);
+    m_queue->SetMaxQueueSize(size);
+  }
   else
     m_queue->Enqueue (Create<WifiMacQueueItem> (packetCopy, hdr));
   StartAccessIfNeeded ();
