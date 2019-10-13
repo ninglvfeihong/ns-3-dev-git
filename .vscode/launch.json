@@ -16,6 +16,11 @@
                 {
                     "name": "LD_LIBRARY_PATH",
                     "value": "./build/lib/"
+                },
+                {
+                    "name": "NS_LOG",
+                    //"value": "*=level_warn|prefix_time"
+                    "value": ""
                 }
             ],
             "externalConsole": false,
