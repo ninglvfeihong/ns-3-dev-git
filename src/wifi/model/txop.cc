@@ -316,14 +316,42 @@ Txop::Queue (Ptr<const Packet> packet, const WifiMacHeader &hdr)
   if(hdr.IsCts())
   { // the injected CTS
     Ptr<WifiMacQueueItem> item = Create<WifiMacQueueItem> (packetCopy, hdr);
-    QueueSize size = m_queue->GetMaxSize();
-    //temporarily enlage queue max size, thus the injected CTS will never be droped
-    m_queue->SetMaxQueueSize(size+item);
-    m_queue->PushFront(item);
-    m_queue->SetMaxQueueSize(size);
+    
+    if(m_queue->GetMaxQueueSize() <= m_queue->GetCurrentSize())
+    {
+      //queue is full, thus temporarily enlage queue max size and try shrink later
+      QueueSize size = m_queue->GetMaxQueueSize();
+      //temporarily enlage queue max size, thus the injected CTS will never be droped
+      //Note:!!! m_queue->GetMaxSize and m_queue->GetMaxQueueSize() is different
+      m_queue->SetMaxQueueSize(m_queue->GetCurrentSize()+item);
+      m_queue->PushFront(item);
+      //try to shrink the queue.
+      m_queue->SetMaxQueueSize(size);
+    }else
+    {
+      m_queue->PushFront(item);
+    }
   }
   else
-    m_queue->Enqueue (Create<WifiMacQueueItem> (packetCopy, hdr));
+    if(m_queue->GetMaxQueueSize() < m_queue->GetCurrentSize())
+    {
+      //this condition is rare but caused by temporarily enlage queue max size for CTS inject
+      //to avoid problem in quque.c::line 217. Cause by temporarily enlage queue max size
+      //NS_ABORT_MSG_IF (size < GetCurrentSize (),
+      //             "The new maximum queue size cannot be less than the current size");
+      QueueSize intendedSize = m_queue->GetMaxQueueSize();
+      //enlarge queue and try shrink later, to avoid above error
+      m_queue->SetMaxQueueSize(m_queue->GetCurrentSize());
+      //this packet must be dropped, the try to shrink max queue size later
+      m_queue->Enqueue (Create<WifiMacQueueItem> (packetCopy, hdr)); 
+      //try shrink the queue size
+      m_queue->SetMaxQueueSize(intendedSize);
+    }else
+    {
+      //Normal process
+      m_queue->Enqueue (Create<WifiMacQueueItem> (packetCopy, hdr));
+    }
+    
   StartAccessIfNeeded ();
 }
 
