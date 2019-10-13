@@ -112,6 +112,8 @@ public:
    */
   void Schedule(Time lrwpanPeriod, Time wifiPeriod, uint32_t id);
 
+  void SetScheduleConfirmCallback(Callback<void, Ptr<ScheduleConfirmParameters>> cb);
+
   /**
    * Get maximum lr-wpan period or wifi period supported
    */
@@ -411,7 +413,7 @@ class Helper{
     SeqTsHeader seqTs;
     p->PeekHeader (seqTs);
     m_m_GenerateWiFiTrafficUdp_allDelay += Now() - seqTs.GetTs();
-    if(ns3::Now()-m_GenerateWiFiTrafficUdpRxCbReportTime > Seconds(0.5)){
+    if(ns3::Now()-m_GenerateWiFiTrafficUdpRxCbReportTime > Seconds(1)){
       m_GenerateWiFiTrafficUdpRxCbReportTime = ns3::Now();
       NS_LOG_INFO("UDP throughput:" << m_GenerateWiFiTrafficUdpRxCbBytes*8/(Now() - m_GenerateWiFiTrafficUdpStartTime).GetSeconds() /1e6 << "Mbps");
       NS_LOG_INFO("UDP average delay:" <<(m_m_GenerateWiFiTrafficUdp_allDelay / (m_GenerateWiFiTrafficUdpRxCbBytes/p->GetSize())).GetSeconds()*1e3 << "ms");
@@ -484,8 +486,8 @@ class Helper{
     
     if(ns3::Now()-m_NetDevCb_reportTime > Seconds(1)){
       m_NetDevCb_reportTime = ns3::Now();
-       NS_LOG_INFO("Lr-Wpan rx/ScheduledTx:" << m_NetDevCb_counter << "/" << m_lrwpanScheduleCounter_tx);
-       NS_LOG_INFO("average delay:" << (m_NetDevCb_allDelay/m_NetDevCb_counter).GetSeconds()*1e3 << "ms");
+       NS_LOG_INFO("LR-WPAN rx/ScheduledTx:" << m_NetDevCb_counter << "/" << m_lrwpanScheduleCounter_tx);
+       NS_LOG_INFO("LR-WPAN delay:" << (m_NetDevCb_allDelay/m_NetDevCb_counter).GetSeconds()*1e3 << "ms");
     }
     return true;
   }
@@ -567,17 +569,31 @@ LrWpanSendScheduleBroadcastRandom(ns3::Ptr<ns3::Node> &sender,
   NS_LOG_INFO(std::to_string(j) + " lr-wpan packets scheduled");
 }
 
-void HwnStaticScheduleStart(Ptr<Hwn> hwn, Time end ){
-  ns3::Time i;
-  for(i= Now();  i<end; i += MilliSeconds(50))
-  {
-    hwn->Schedule(MilliSeconds(30),MilliSeconds(30),1);
-    //hwn->Schedule(hwn->GetMaxLrwpanPeriod(),hwn->GetMaxWifiPeriod(),1);
+
+Time m_hwnStaticSchedule_lrwpanSlot = MilliSeconds(30);
+Time m_hwnStaticSchedule_wifiSlot = MilliSeconds(30);
+Time m_hwnStaticSchedule_end;
+Ptr<Hwn> m_hwnStaticSchedule_hwn;
+void HwnStaticScheduleCb(Ptr<Hwn::ScheduleConfirmParameters> scheduleConfirm){
+  if(Now()>m_hwnStaticSchedule_end) return;
+  if(scheduleConfirm->status == Hwn::HWN_SUCCESS){
+    m_hwnStaticSchedule_hwn->Schedule(m_hwnStaticSchedule_lrwpanSlot,m_hwnStaticSchedule_wifiSlot,1);
+  }else{
+    NS_LOG_WARN("Schedule failed:"<< scheduleConfirm->status);
+    m_hwnStaticSchedule_hwn->Schedule(m_hwnStaticSchedule_lrwpanSlot,m_hwnStaticSchedule_wifiSlot,1);
   }
+}
+
+void HwnStaticScheduleStart(){
+  
+  m_hwnStaticSchedule_hwn->Schedule(m_hwnStaticSchedule_lrwpanSlot,m_hwnStaticSchedule_wifiSlot,0);
 }
 void HwnStaticSchedule(Ptr<Hwn> hwn, const Time &startTime, Time end )
 {
-  Simulator::Schedule(startTime, &HwnStaticScheduleStart,hwn,end);
+  m_hwnStaticSchedule_end = end;
+  m_hwnStaticSchedule_hwn = hwn;
+  hwn->SetScheduleConfirmCallback(MakeCallback(&HwnStaticScheduleCb));
+  Simulator::Schedule(startTime, &HwnStaticScheduleStart);
 }
 
 
@@ -953,6 +969,12 @@ Hwn::SetApWiFiMac(Ptr<ApWifiMac> apWiFiMac)
 }
 
 void
+Hwn::SetScheduleConfirmCallback(Callback<void, Ptr<ScheduleConfirmParameters>> cb)
+{
+  m_scheduleConfirmCb = cb;
+}
+
+void
 Hwn::Schedule(Time lrwpanPeriod, Time wifiPeriod, uint32_t id)
 {
   NS_ASSERT(m_lrWpanMac && m_apWiFiMac);
@@ -1019,7 +1041,8 @@ Hwn::WiFiMaclowCtsInjectSentCallback(Time duration)
     //wifi Period is enough for compensation, thus OK
     McpsAnRequestParams anParams;
     Time SpfDuration = m_currentScheduleItem->wifiPeriod + m_LrwpanExcessSP - csmaCompensation;
-    anParams.m_GpExpire = (uint16_t) m_lrWpanMac->TimeToSymbol(duration);
+    //minus NanoSeconds(1) ensure the LrwpanMcpsAnConfirm is called before  Simulator::Schedule(duration,&Hwn::ChangeState,this,HWN_WS);
+    anParams.m_GpExpire = (uint16_t) m_lrWpanMac->TimeToSymbol(duration - NanoSeconds(1)); 
     anParams.m_SPF = (uint8_t) (m_lrWpanMac->TimeToSymbol(SpfDuration)/64);
     m_lrWpanMac->McpsAnRequestImmediate(anParams);
     m_scheduleEventId.Cancel();
@@ -1052,7 +1075,7 @@ Hwn::LrwpanMcpsAnConfirm(struct McpsAnConfirmParams anParam)
     param->status = HWN_SUCCESS;
     if(!m_scheduleConfirmCb.IsNull()) m_scheduleConfirmCb(param);
   }else{
-    NS_LOG_WARN("Send AN fail and fail code is:"+anParam.m_status);
+    NS_LOG_WARN("Send AN fail and fail code is:" << anParam.m_status);
     m_hwnState = HWN_CS;
     Ptr<ScheduleConfirmParameters> param = Create<ScheduleConfirmParameters>();
     param->status = HWN_LR_WPAN_FAILURE;
