@@ -446,7 +446,7 @@ public:
   Time SymbolToTime(uint32_t symbolsNumber);
   
   /**
-   *get Symbol Numbers by the time duration, round up method. 
+   *get Symbol Numbers by the time duration, round down method. 
    * 
    */
   uint32_t TimeToSymbol(Time time);

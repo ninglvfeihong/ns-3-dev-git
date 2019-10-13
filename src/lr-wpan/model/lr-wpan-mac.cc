@@ -482,7 +482,7 @@ LrWpanMac::SymbolToTime(uint32_t symbolsNumber)
 uint32_t
 LrWpanMac::TimeToSymbol(Time time)
 {
-  return (uint32_t) ceil(time.GetSeconds()* GetPhy ()->GetDataOrSymbolRate (false));
+  return (uint32_t) floor(time.GetSeconds()* GetPhy ()->GetDataOrSymbolRate (false));
 }
 
 inline uint32_t LrWpanMac::GetFrameDuration(uint32_t psduSize)
@@ -1197,7 +1197,7 @@ LrWpanMac::PlmeSetTRXStateConfirm (LrWpanPhyEnumeration status)
       // Start the CSMA algorithm as soon as the receiver is enabled.
       if(m_lrWpanMacAnState == MAC_AN_SENDING)
       {
-        Time FrameSendingDuration = SymbolToTime(GetFrameDuration(AnPacketAssemble()->GetSize()));
+        Time FrameSendingDuration = FrameSendEstimation(AnPacketAssemble()); 
         Time priorityEndTime = m_anProcessData.GpExpireTime - FrameSendingDuration;
         m_csmaCa->StartPriority (priorityEndTime,m_anProcessData.isImmediate);//start priority CSMA for AN
       }
