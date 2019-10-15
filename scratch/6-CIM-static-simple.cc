@@ -570,7 +570,7 @@ LrWpanSendScheduleBroadcastRandom(ns3::Ptr<ns3::Node> &sender,
 }
 
 
-Time m_hwnStaticSchedule_lrwpanSlot = MilliSeconds(30);
+Time m_hwnStaticSchedule_lrwpanSlot = MilliSeconds(5);
 Time m_hwnStaticSchedule_wifiSlot = MilliSeconds(30);
 Time m_hwnStaticSchedule_end;
 Ptr<Hwn> m_hwnStaticSchedule_hwn;
@@ -617,7 +617,7 @@ main (int argc, char *argv[])
   double desiredWiFiSpeed =0; 
   double desiredWiFiSpeedMax = 32; //Mbps
   double desiredWiFiSpeedStep = 1; //Mbps
-  Time simulationTimePerRound = Seconds(15);
+  Time simulationTimePerRound = Seconds(300);
 
   std::ofstream lrWpanPlrPlotFile ("cim-static-simple-lrwpan-plr.plt");
   //Gnuplot lrWpanPlrPlot = Gnuplot ("cim-static-simple-lrwpan-plr.eps");
@@ -646,7 +646,7 @@ main (int argc, char *argv[])
   
   for(; desiredWiFiSpeed <= desiredWiFiSpeedMax; desiredWiFiSpeed += desiredWiFiSpeedStep)
   {
-    for(int i=0;i<2;i++){
+    for(int i=1;i<2;i++){
       bool isWithScheduling;
       switch (i){
         case 0:
@@ -773,7 +773,7 @@ main (int argc, char *argv[])
       xiao_helper.GenerateWiFiTrafficUdp(gateway,wifiApIpv4Interfaces.GetAddress (0),wifiStation,wifiStaIpv4Interfaces.GetAddress (0),
                                           desiredWiFiSpeed,Seconds(1),simulationTimePerRound);
       //stupid way scheduling lr-wpan packet seding
-      xiao_helper.LrWpanSendScheduleBroadcast(lrwpanNode, Seconds(1.12),simulationTimePerRound-Seconds(0.5),MilliSeconds(30));
+      xiao_helper.LrWpanSendScheduleBroadcast(lrwpanNode, Seconds(1.12),simulationTimePerRound-Seconds(0.5),MilliSeconds(300));
 
       /********************************************************
        * configuration Hwn
