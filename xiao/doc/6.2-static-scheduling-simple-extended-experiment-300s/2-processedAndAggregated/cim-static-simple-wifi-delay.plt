@@ -4,9 +4,11 @@ set ylabel "WiFi Packet Delay (ms)"
 set xrange [0:32]
 set logscale y 10
 set grid
+#set key left
+set key at 14,1000,0
 set for [i=1:7] style line 1 lw 1 ps 1
 set style increment user
-plot "-"  title "Original" with lines, "-"  title "Proposed Algorithm 32:32" with linespoints, "-"  title "Proposed Algorithm 5:30" with linespoints, "-"  title "Proposed Algorithm 15:30" with linespoints, "-"  title "Proposed Algorithm 15:100" with linespoints, "-"  title "Proposed Algorithm 15:250" with linespoints, "-"  title "Proposed Algorithm 5:250" with linespoints
+plot "-"  title "Original" with lines, "-"  title "Proposed Algorithm 30:30" with linespoints, "-"  title "Proposed Algorithm 5:30" with linespoints, "-"  title "Proposed Algorithm 15:30" with linespoints, "-"  title "Proposed Algorithm 15:100" with linespoints, "-"  title "Proposed Algorithm 15:250" with linespoints, "-"  title "Proposed Algorithm 5:250" with linespoints
 0 0
 1 0.293782
 2 0.279251

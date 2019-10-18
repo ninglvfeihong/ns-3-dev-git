@@ -3,9 +3,10 @@ set xlabel "Desired WiFi Speed (Mbps)"
 set ylabel "LR-WPAN Packet Delay (ms)"
 set xrange [0:32]
 set grid
+set key at 32,118,0
 set for [i=1:7] style line 1 lw 1 ps 1
 set style increment user
-plot "-"  title "Original" with lines, "-"  title "Proposed Algorithm 32:32" with linespoints, "-"  title "Proposed Algorithm 5:30" with linespoints, "-"  title "Proposed Algorithm 15:30" with linespoints, "-"  title "Proposed Algorithm 15:100" with linespoints, "-"  title "Proposed Algorithm 15:250" with linespoints, "-"  title "Proposed Algorithm 5:250" with linespoints
+plot "-"  title "Original" with lines, "-"  title "Proposed Algorithm 30:30" with linespoints, "-"  title "Proposed Algorithm 5:30" with linespoints, "-"  title "Proposed Algorithm 15:30" with linespoints, "-"  title "Proposed Algorithm 15:100" with linespoints, "-"  title "Proposed Algorithm 15:250" with linespoints, "-"  title "Proposed Algorithm 5:250" with linespoints
 0 2.64996
 1 2.82224
 2 2.96998

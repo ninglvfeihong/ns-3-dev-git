@@ -5,7 +5,7 @@ set xrange [0:32]
 set grid
 set for [i=1:7] style line 1 lw 1 ps 1
 set style increment user
-plot "-"  title "Original" with lines, "-"  title "Proposed Algorithm 32:32" with linespoints, "-"  title "Proposed Algorithm 5:30" with linespoints, "-"  title "Proposed Algorithm 15:30" with linespoints, "-"  title "Proposed Algorithm 15:100" with linespoints, "-"  title "Proposed Algorithm 15:250" with linespoints, "-"  title "Proposed Algorithm 5:250" with linespoints
+plot "-"  title "Original" with lines, "-"  title "Proposed Algorithm 30:30" with linespoints, "-"  title "Proposed Algorithm 5:30" with linespoints, "-"  title "Proposed Algorithm 15:30" with linespoints, "-"  title "Proposed Algorithm 15:100" with linespoints, "-"  title "Proposed Algorithm 15:250" with linespoints, "-"  title "Proposed Algorithm 5:250" with linespoints
 0 0.0160804
 1 0.0924623
 2 0.150754
