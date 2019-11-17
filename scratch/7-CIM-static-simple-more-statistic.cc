@@ -602,7 +602,10 @@ void HwnStaticScheduleCb(Ptr<Hwn::ScheduleConfirmParameters> scheduleConfirm){
     m_hwnStaticSchedule_hwn->Schedule(m_hwnStaticSchedule_lrwpanSlot,m_hwnStaticSchedule_wifiSlot,1);
   }
 }
-
+void HwnStaticReportCb(Ptr<Hwn::ScheduleReportParameters> param){
+  NS_LOG_INFO("CsmaDelay" << param->csmaDelay);
+  NS_LOG_INFO("Manaement Period " << param->managementPeriod);
+}
 void HwnStaticScheduleStart(){
   
   m_hwnStaticSchedule_hwn->Schedule(m_hwnStaticSchedule_lrwpanSlot,m_hwnStaticSchedule_wifiSlot,0);
@@ -612,6 +615,7 @@ void HwnStaticSchedule(Ptr<Hwn> hwn, const Time &startTime, Time end )
   m_hwnStaticSchedule_end = end;
   m_hwnStaticSchedule_hwn = hwn;
   hwn->SetScheduleConfirmCallback(MakeCallback(&HwnStaticScheduleCb));
+  hwn->SetScheduleReportCallback(MakeCallback(&HwnStaticReportCb));
   Simulator::Schedule(startTime, &HwnStaticScheduleStart);
 }
 
@@ -633,10 +637,10 @@ main (int argc, char *argv[])
   //Packet::EnablePrinting ();
   //Packet::EnableChecking();
 
-  double desiredWiFiSpeed =10; 
+  double desiredWiFiSpeed =19; 
   double desiredWiFiSpeedMax = 32; //Mbps
   double desiredWiFiSpeedStep = 100; //Mbps
-  Time simulationTimePerRound = Seconds(4);
+  Time simulationTimePerRound = Seconds(9);
 
   std::ofstream lrWpanPlrPlotFile ("cim-static-simple-lrwpan-plr.plt");
   //Gnuplot lrWpanPlrPlot = Gnuplot ("cim-static-simple-lrwpan-plr.eps");
@@ -809,7 +813,7 @@ main (int argc, char *argv[])
 
 
       Simulator::Stop (simulationTimePerRound+Seconds(0.5));
-      xiao_helper.PlaceSpectrum(channel,Vector(5,5,0),Seconds(0.1),Seconds(0),MicroSeconds(1000));
+      xiao_helper.PlaceSpectrum(channel,Vector(5,5,0),Seconds(0.1),Seconds(3),MicroSeconds(1000));
       //xiao_helper.ConfigStorShow();
       //xiao_helper.makeAnim();
       Simulator::Run ();
@@ -1009,7 +1013,12 @@ Hwn::ScheduleReportStatisticEnd(void)
 {
   if(m_hwnState == HWN_WS){
     Ptr<ScheduleReportParameters> param = Create<ScheduleReportParameters>();
-    param->managementPeriod = m_currentScheduleItem->anSentTime - m_currentScheduleItem->ctsStartSendingTime;
+    //not work if CTS is not received by others nodes. 
+    //param->managementPeriod = m_currentScheduleItem->anSentTime - m_currentScheduleItem->ctsStartSendingTime;
+    //param->managementPeriod =  NanoSeconds(1004000); //seting using experiment const vaule for managementPeriod.
+    //param->managementPeriod = NanoSeconds(44000) /*WiFi CTS*/ + m_lrWpanMac->GetMinAnSendingTimeRequired();
+    //m_lrWpanMac->GetMinAnSendingTimeRequired() may optimized by cache static vaule to speed up AnSedning Time Reuqired caculation
+    param->managementPeriod = m_currentScheduleItem->ctsSentTime - m_currentScheduleItem->ctsStartSendingTime /*WiFi CTS*/ + m_lrWpanMac->GetMinAnSendingTimeRequired();
     param->lrwpanPeriod = m_currentScheduleItem->lrwpanPeriod;
     param->wifiPeriod = m_currentScheduleItem ->wifiPeriod;
     param->csmaDelay = m_currentScheduleItem->ctsStartSendingTime - m_currentScheduleItem->ctsInjectTime;
