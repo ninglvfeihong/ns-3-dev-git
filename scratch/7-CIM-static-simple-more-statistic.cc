@@ -102,6 +102,18 @@ public:
     Time csmaCompensation;
     Time wifiCBT;         //!< wifi channel busy time, exclude HWN management frame
     Time lrwpanCBT;       //!< Lr-Wpan channel busy time, exclude HWN management frame
+    uint64_t wifiPacketCount;  //wifi packet number
+    uint64_t lrwpanPacketCount; //Lr-Wpan packet number
+  };
+  /**
+   * Report statics
+   */
+  struct ScheduleReportStatics: public SimpleRefCount<ScheduleReportParameters>
+  {
+    Time wifiCBT;         //!< wifi channel busy time, exclude HWN management frame
+    Time lrwpanCBT;       //!< Lr-Wpan channel busy time, exclude HWN management frame
+    uint64_t wifiPacketCount;  //wifi packet number
+    uint64_t lrwpanPacketCount; //Lr-Wpan packet number
   };
   /**
    * Register this type.
@@ -156,6 +168,10 @@ private:
    * The item is currently scheduling
    */
   Ptr<ScheduleItem> m_currentScheduleItem;
+  /**
+   * current scheduling report statistics
+   */
+  Ptr<ScheduleReportStatics> m_reportStatics;
   /**
    * CTS maximum waiting time
    */
@@ -213,6 +229,14 @@ private:
    * Estimate CTS period according to desired lr-wpan period
    */
   Time EstimateCtsPeriodByLrwpanPeriod(Time lrwpanPeriod);
+
+  /**
+   * Lrwpan and wifi traces report statistics
+   */
+  void ReportLrwpanMacPromiscSniffer(Ptr<const Packet> p);
+  void ReportWifiSniffRx( Ptr<const Packet>, uint16_t, WifiTxVector, MpduInfo, SignalNoiseDbm);
+  void ReportWifiSniffTx( Ptr<const Packet>, uint16_t, WifiTxVector, MpduInfo);
+
 
 };
 
@@ -605,6 +629,10 @@ void HwnStaticScheduleCb(Ptr<Hwn::ScheduleConfirmParameters> scheduleConfirm){
 void HwnStaticReportCb(Ptr<Hwn::ScheduleReportParameters> param){
   NS_LOG_INFO("CsmaDelay" << param->csmaDelay);
   NS_LOG_INFO("Manaement Period " << param->managementPeriod);
+  NS_LOG_INFO("LR-WPAN CBT:" <<param->lrwpanCBT);
+  NS_LOG_INFO("WiFi CBT:" <<param->wifiCBT);
+  NS_LOG_INFO("LR-WPAN Count:" <<param->lrwpanPacketCount);
+  NS_LOG_INFO("WiFi Count:" <<param->wifiPacketCount);
 }
 void HwnStaticScheduleStart(){
   
@@ -637,7 +665,7 @@ main (int argc, char *argv[])
   //Packet::EnablePrinting ();
   //Packet::EnableChecking();
 
-  double desiredWiFiSpeed =19; 
+  double desiredWiFiSpeed =0; 
   double desiredWiFiSpeedMax = 32; //Mbps
   double desiredWiFiSpeedStep = 100; //Mbps
   Time simulationTimePerRound = Seconds(9);
@@ -949,6 +977,7 @@ Hwn::Hwn()
 : m_lrWpanMac(0),
 m_apWiFiMac(0),
 m_currentScheduleItem(0),
+m_reportStatics(Create<ScheduleReportStatics>()),
 m_ctsWaitMax(MilliSeconds(20)),
 m_ctsDurationMax(MicroSeconds(0x7fff)),
 m_maxLrwpanPeriod(MilliSeconds(0)),
@@ -1003,11 +1032,65 @@ Hwn::SetScheduleReportCallback(Callback<void, Ptr<ScheduleReportParameters>> cb)
   m_scheduleReportCb = cb;
 }
 
+
+void
+Hwn::ReportLrwpanMacPromiscSniffer(Ptr<const Packet> p)
+{
+  //NS_LOG_INFO("LR-wpan packet..................");
+  LrWpanMacHeader macHdr;
+  p->PeekHeader(macHdr);
+  if(macHdr.GetCmdIdentifier() == LrWpanMacHeader::LRWPAN_MAC_CMD_ASSESS_NOTIFICATION)
+  {
+    //management frame.
+    //do nothing
+  }else{
+    //normal frame
+    double SPO = m_lrWpanMac->GetPhy()->GetPhySymbolsPerOctet();
+    int32_t symbolN = SPO*(1/*PHY header*/ + p->GetSize()) + m_lrWpanMac->GetPhy()->GetPhySHRDuration();
+    Time txTime = m_lrWpanMac->SymbolToTime(symbolN);
+    m_reportStatics->lrwpanCBT += txTime;
+    m_reportStatics->lrwpanPacketCount ++;
+  }
+}
+void
+Hwn::ReportWifiSniffRx( Ptr<const Packet> p, uint16_t, WifiTxVector txVector, MpduInfo mpduInfo, SignalNoiseDbm snr)
+{
+  Time txDuration = m_apWiFiMac->GetWifiPhy()->CalculateTxDuration (p->GetSize(),txVector, m_apWiFiMac->GetWifiPhy()->GetFrequency ());
+  //NS_LOG_INFO("wifi packet.................." << txDuration);
+  //p->Print(std::cout);
+  m_reportStatics->wifiCBT += txDuration;
+  m_reportStatics->wifiPacketCount ++;
+}
+void
+Hwn::ReportWifiSniffTx( Ptr<const Packet> p, uint16_t, WifiTxVector txVector, MpduInfo mpduInfo)
+{
+  Time txDuration = m_apWiFiMac->GetWifiPhy()->CalculateTxDuration (p->GetSize(),txVector, m_apWiFiMac->GetWifiPhy()->GetFrequency ());
+  //NS_LOG_INFO("wifi packet.................." << txDuration);
+  //p->Print(std::cout);
+  m_reportStatics->wifiCBT += txDuration;
+  m_reportStatics->wifiPacketCount ++;
+}
+
 void
 Hwn::ScheduleReportStatisticStart(void)
 {
-
+  //static Callback<void, Ptr<const Packet>> rptMacPromiscRx;
+  //static Callback<void, Ptr<const Packet>, uint16_t, WifiTxVector, MpduInfo, SignalNoiseDbm> phyMonitorSniffRxTrace;
+  static bool firstTime = true;
+  //using ns3 trace source to get CBT (channel busy time) information 
+  if(firstTime){
+    firstTime = false;
+    m_lrWpanMac->TraceConnectWithoutContext("PromiscSniffer", MakeCallback(&Hwn::ReportLrwpanMacPromiscSniffer, this));
+    m_apWiFiMac->GetWifiPhy()->TraceConnectWithoutContext("MonitorSnifferRx", MakeCallback(&Hwn::ReportWifiSniffRx, this));
+    m_apWiFiMac->GetWifiPhy()->TraceConnectWithoutContext("MonitorSnifferTx", MakeCallback(&Hwn::ReportWifiSniffTx, this));
+  }
+  m_reportStatics->lrwpanCBT = Seconds(0);
+  m_reportStatics->wifiCBT = Seconds(0);
+  m_reportStatics->lrwpanPacketCount = 0;
+  m_reportStatics->wifiPacketCount = 0;
 }
+
+
 void
 Hwn::ScheduleReportStatisticEnd(void)
 {
@@ -1018,11 +1101,16 @@ Hwn::ScheduleReportStatisticEnd(void)
     //param->managementPeriod =  NanoSeconds(1004000); //seting using experiment const vaule for managementPeriod.
     //param->managementPeriod = NanoSeconds(44000) /*WiFi CTS*/ + m_lrWpanMac->GetMinAnSendingTimeRequired();
     //m_lrWpanMac->GetMinAnSendingTimeRequired() may optimized by cache static vaule to speed up AnSedning Time Reuqired caculation
-    param->managementPeriod = m_currentScheduleItem->ctsSentTime - m_currentScheduleItem->ctsStartSendingTime /*WiFi CTS*/ + m_lrWpanMac->GetMinAnSendingTimeRequired();
+    Time wifiCtsDuration = m_currentScheduleItem->ctsSentTime - m_currentScheduleItem->ctsStartSendingTime /*WiFi CTS*/ ;
+    param->managementPeriod = wifiCtsDuration + m_lrWpanMac->GetMinAnSendingTimeRequired();
     param->lrwpanPeriod = m_currentScheduleItem->lrwpanPeriod;
     param->wifiPeriod = m_currentScheduleItem ->wifiPeriod;
     param->csmaDelay = m_currentScheduleItem->ctsStartSendingTime - m_currentScheduleItem->ctsInjectTime;
     param->csmaCompensation = param->csmaDelay; 
+    param->lrwpanCBT = m_reportStatics->lrwpanCBT;          //the management frame has already removed during statistic collection
+    param->lrwpanPacketCount = m_reportStatics->lrwpanPacketCount;
+    param->wifiCBT = m_reportStatics->wifiCBT - wifiCtsDuration; //remove management frame : wifi CTS
+    param->wifiPacketCount = m_reportStatics->wifiPacketCount -1; //minus one wifi management frame: wifi CTS
     if(! m_scheduleReportCb.IsNull()) m_scheduleReportCb(param);
   }else{
     NS_LOG_ERROR("Unexpected m_hwnState state for statistic End");
