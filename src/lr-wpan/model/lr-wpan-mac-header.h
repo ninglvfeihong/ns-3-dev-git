@@ -103,7 +103,7 @@ public:
     LRWPAN_MAC_CMD_BEACON_REQ                   = 7,        //!< LRWPAN_MAC_ACKNOWLEDGMENT
     LRWPAN_MAC_CMD_COORDINATOR_REALIGNMENT      = 8,        //!< LRWPAN_MAC_COMMAND
     LRWPAN_MAC_CMD_GTS_REQ                      = 9,        //!< LRWPAN_MAC_COMMAND
-    LRWPAN_MAC_CMD_ASSESS_CONTROL               = 10,        //!< LRWPAN_MAC_COMMAND
+    LRWPAN_MAC_CMD_ASSESS_NOTIFICATION          = 10,        //!< LRWPAN_MAC_COMMAND
     LRWPAN_MAC_CMD_RESERVED           //!< LRWPAN_MAC_RESERVED
   };
 

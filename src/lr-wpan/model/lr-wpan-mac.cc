@@ -499,7 +499,7 @@ inline uint32_t LrWpanMac::GetSendingDurationMin(uint32_t psduSize)
 void
 LrWpanMac::SetupMacHdrForAn(LrWpanMacHeader &macHdr)
 {
-  macHdr.SetCmdIdentifier(LrWpanMacHeader::LRWPAN_MAC_CMD_ASSESS_CONTROL);
+  macHdr.SetCmdIdentifier(LrWpanMacHeader::LRWPAN_MAC_CMD_ASSESS_NOTIFICATION);
   /* config 1 */
   macHdr.SetPanIdComp();
   //setting src address,
@@ -848,7 +848,7 @@ LrWpanMac::PdDataIndication (uint32_t psduLength, Ptr<Packet> p, uint8_t lqi)
                   ChangeMacState (MAC_IDLE);
                   m_setMacState = Simulator::ScheduleNow (&LrWpanMac::SendAck, this, receivedMacHdr.GetSeqNum ());
                 }
-              if(receivedMacHdr.IsCommand() && receivedMacHdr.GetCmdIdentifier() == LrWpanMacHeader::LRWPAN_MAC_CMD_ASSESS_CONTROL)
+              if(receivedMacHdr.IsCommand() && receivedMacHdr.GetCmdIdentifier() == LrWpanMacHeader::LRWPAN_MAC_CMD_ASSESS_NOTIFICATION)
                 {
                   NS_ASSERT(m_lrWpanMacAnState != MAC_AN_SENDING && m_lrWpanMacAnState != MAC_AN_PENDING); //this case is logically impossible in application
                   LrWpanMacCmdAnHeader cmdHdr;
