@@ -561,6 +561,92 @@ class Helper{
     m_NetDevCb_reportTime = start;
     Simulator::Schedule(start, &Helper::_LrWpanSendScheduleBroadcastSend, this,sender, end, interval);
   }
+
+
+  Time m_hwnStaticSchedule_lrwpanSlot = MilliSeconds(30);
+  Time m_hwnStaticSchedule_wifiSlot = MilliSeconds(30);
+  Time m_hwnStaticSchedule_end;
+  Ptr<Hwn> m_hwnStaticSchedule_hwn;
+  void HwnStaticScheduleCb(Ptr<Hwn::ScheduleConfirmParameters> scheduleConfirm){
+    if(Now()>m_hwnStaticSchedule_end) return;
+    if(scheduleConfirm->status == Hwn::HWN_SUCCESS){
+      m_hwnStaticSchedule_hwn->Schedule(m_hwnStaticSchedule_lrwpanSlot,m_hwnStaticSchedule_wifiSlot,1);
+    }else{
+      NS_LOG_WARN("Schedule failed:"<< scheduleConfirm->status);
+      m_hwnStaticSchedule_hwn->Schedule(m_hwnStaticSchedule_lrwpanSlot,m_hwnStaticSchedule_wifiSlot,1);
+    }
+  }
+  struct {
+    uint64_t schedulingCount;
+    Time csmaDelaySum;
+    Time managementPeriodSum;
+    Time lrwpanPeriodSum;
+    Time wifiPeriodSum;
+    Time lrwpanCBTSum;
+    Time wifiCBTSum;
+    uint64_t lrwpanPacketCount;
+    uint64_t wifiPacketCount;
+
+  } hwnStatistic;
+
+  void
+  HwnStatisticInit(void){
+    hwnStatistic.schedulingCount = 0;
+    hwnStatistic.csmaDelaySum = Seconds(0);
+    hwnStatistic.managementPeriodSum = Seconds(0);
+    hwnStatistic.lrwpanCBTSum = Seconds(0);
+    hwnStatistic.wifiPeriodSum = Seconds(0);
+    hwnStatistic.lrwpanCBTSum = Seconds(0);
+    hwnStatistic.wifiCBTSum = Seconds(0);
+    hwnStatistic.lrwpanPacketCount = 0;
+    hwnStatistic.wifiPacketCount = 0;
+    
+  }
+  void HwnStatisticReportCb(Ptr<Hwn::ScheduleReportParameters> param){
+    // NS_LOG_INFO("CsmaDelay" << param->csmaDelay);
+    // NS_LOG_INFO("Manaement Period " << param->managementPeriod);
+    // NS_LOG_INFO("LR-WPAN CBT:" <<param->lrwpanCBT);
+    // NS_LOG_INFO("WiFi CBT:" <<param->wifiCBT);
+    // NS_LOG_INFO("LR-WPAN Count:" <<param->lrwpanPacketCount);
+    // NS_LOG_INFO("WiFi Count:" <<param->wifiPacketCount);
+    if(param->wifiCBT >= param->wifiPeriod){
+      //scheduling fail;
+      return;
+    }
+    hwnStatistic.schedulingCount++;
+    hwnStatistic.csmaDelaySum += param->csmaDelay;
+    hwnStatistic.managementPeriodSum += param->managementPeriod;
+    hwnStatistic.lrwpanPeriodSum += param->lrwpanPeriod;
+    hwnStatistic.wifiPeriodSum += param->wifiPeriod;
+    hwnStatistic.lrwpanCBTSum += param->lrwpanCBT;
+    hwnStatistic.wifiCBTSum += param->wifiCBT;
+    hwnStatistic.lrwpanPacketCount += param->lrwpanPacketCount;
+    hwnStatistic.wifiPacketCount += param->wifiPacketCount;
+  }
+  Time HwnGetManagementDelay(void){
+    return hwnStatistic.csmaDelaySum/hwnStatistic.schedulingCount;
+  }
+  double HwnGetManagementOverhead(void){
+    return hwnStatistic.managementPeriodSum.GetSeconds() / (hwnStatistic.wifiPeriodSum + hwnStatistic.lrwpanPeriodSum + hwnStatistic.managementPeriodSum).GetSeconds();
+  }
+  double HwnGetSlotUsageLrwpan(void){
+    return hwnStatistic.lrwpanCBTSum.GetSeconds() / hwnStatistic.lrwpanPeriodSum.GetSeconds();
+  }
+  double HwnGetSlotUsageWifi(void){
+    return hwnStatistic.wifiCBTSum.GetSeconds() / hwnStatistic.wifiPeriodSum.GetSeconds();
+  }
+  void HwnStaticScheduleStart(){
+    HwnStatisticInit();
+    m_hwnStaticSchedule_hwn->Schedule(m_hwnStaticSchedule_lrwpanSlot,m_hwnStaticSchedule_wifiSlot,0);
+  }
+  void HwnStaticSchedule(Ptr<Hwn> hwn, const Time &startTime, Time end )
+  {
+    m_hwnStaticSchedule_end = end;
+    m_hwnStaticSchedule_hwn = hwn;
+    hwn->SetScheduleConfirmCallback(MakeCallback(&Helper::HwnStaticScheduleCb, this));
+    hwn->SetScheduleReportCallback(MakeCallback(&Helper::HwnStatisticReportCb, this));
+    Simulator::Schedule(startTime, &Helper::HwnStaticScheduleStart, this);
+  }
 };
 
 
@@ -613,39 +699,8 @@ LrWpanSendScheduleBroadcastRandom(ns3::Ptr<ns3::Node> &sender,
 }
 
 
-Time m_hwnStaticSchedule_lrwpanSlot = MilliSeconds(30);
-Time m_hwnStaticSchedule_wifiSlot = MilliSeconds(30);
-Time m_hwnStaticSchedule_end;
-Ptr<Hwn> m_hwnStaticSchedule_hwn;
-void HwnStaticScheduleCb(Ptr<Hwn::ScheduleConfirmParameters> scheduleConfirm){
-  if(Now()>m_hwnStaticSchedule_end) return;
-  if(scheduleConfirm->status == Hwn::HWN_SUCCESS){
-    m_hwnStaticSchedule_hwn->Schedule(m_hwnStaticSchedule_lrwpanSlot,m_hwnStaticSchedule_wifiSlot,1);
-  }else{
-    NS_LOG_WARN("Schedule failed:"<< scheduleConfirm->status);
-    m_hwnStaticSchedule_hwn->Schedule(m_hwnStaticSchedule_lrwpanSlot,m_hwnStaticSchedule_wifiSlot,1);
-  }
-}
-void HwnStaticReportCb(Ptr<Hwn::ScheduleReportParameters> param){
-  NS_LOG_INFO("CsmaDelay" << param->csmaDelay);
-  NS_LOG_INFO("Manaement Period " << param->managementPeriod);
-  NS_LOG_INFO("LR-WPAN CBT:" <<param->lrwpanCBT);
-  NS_LOG_INFO("WiFi CBT:" <<param->wifiCBT);
-  NS_LOG_INFO("LR-WPAN Count:" <<param->lrwpanPacketCount);
-  NS_LOG_INFO("WiFi Count:" <<param->wifiPacketCount);
-}
-void HwnStaticScheduleStart(){
-  
-  m_hwnStaticSchedule_hwn->Schedule(m_hwnStaticSchedule_lrwpanSlot,m_hwnStaticSchedule_wifiSlot,0);
-}
-void HwnStaticSchedule(Ptr<Hwn> hwn, const Time &startTime, Time end )
-{
-  m_hwnStaticSchedule_end = end;
-  m_hwnStaticSchedule_hwn = hwn;
-  hwn->SetScheduleConfirmCallback(MakeCallback(&HwnStaticScheduleCb));
-  hwn->SetScheduleReportCallback(MakeCallback(&HwnStaticReportCb));
-  Simulator::Schedule(startTime, &HwnStaticScheduleStart);
-}
+
+
 
 
 };
@@ -665,7 +720,7 @@ main (int argc, char *argv[])
   //Packet::EnablePrinting ();
   //Packet::EnableChecking();
 
-  double desiredWiFiSpeed =0; 
+  double desiredWiFiSpeed =20; 
   double desiredWiFiSpeedMax = 32; //Mbps
   double desiredWiFiSpeedStep = 100; //Mbps
   Time simulationTimePerRound = Seconds(9);
@@ -836,7 +891,7 @@ main (int argc, char *argv[])
       hwn->SetLrWpanMac(lrwpanMac);
       hwn->SetApWiFiMac(apMac);
       
-      if(isWithScheduling) xiao::HwnStaticSchedule(hwn,Seconds(1),simulationTimePerRound);
+      if(isWithScheduling) xiao_helper.HwnStaticSchedule(hwn,Seconds(1),simulationTimePerRound);
       
 
 
@@ -851,6 +906,10 @@ main (int argc, char *argv[])
       NS_LOG_INFO("LR-WPAN Delay:" << xiao_helper.GetLrWpanDelay().GetSeconds()*1e3 <<" ms");
       NS_LOG_INFO("WiFi ThrouthPut:" << xiao_helper.GetUdpThroughtput() << " Mbps");
       NS_LOG_INFO("WiFi Delay:"<< xiao_helper.GetUdpDelay().GetSeconds()*1e3 <<" ms");
+      NS_LOG_INFO("Management Average Delay" << xiao_helper.HwnGetManagementDelay().GetSeconds()*1e3 <<" ms");
+      NS_LOG_INFO("Management Overhead " << xiao_helper.HwnGetManagementOverhead()*1e2 <<"%");
+      NS_LOG_INFO("Lrwpan slot usage " << xiao_helper.HwnGetSlotUsageLrwpan()*1e2 <<"%");
+      NS_LOG_INFO("WiFi slot usage " << xiao_helper.HwnGetSlotUsageWifi()*1e2 <<"%");
       if(isWithScheduling){
         lrWpanPlrSchdataset.Add(desiredWiFiSpeed, xiao_helper.GetLrWpanPLR());
         lrWpanDelaySchdataset.Add(desiredWiFiSpeed, xiao_helper.GetLrWpanDelay().GetSeconds()*1e3);
