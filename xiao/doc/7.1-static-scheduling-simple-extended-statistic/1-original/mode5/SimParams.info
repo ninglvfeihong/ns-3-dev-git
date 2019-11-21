@@ -1,0 +1,5 @@
+Simulation parameters:
+isWithScheduling: 1
+Lr-Wpan slot: 15 ms
+WiFi slot: 100 ms
+simulationTimePerRound: 300s
