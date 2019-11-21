@@ -1357,6 +1357,8 @@ Hwn::WiFiMaclowCtsInjectSentCallback(Time duration)
   m_currentScheduleItem->ctsRealDuration = duration;
 
   Time csmaCompensation = m_currentScheduleItem->ctsStartSendingTime - m_currentScheduleItem->ctsInjectTime;
+  if(csmaCompensation > m_currentScheduleItem->wifiPeriod) csmaCompensation = m_currentScheduleItem->wifiPeriod;
+
   m_currentScheduleItem->wifiSlotEndTime = m_currentScheduleItem->ctsSentTime + duration + m_currentScheduleItem->wifiPeriod - csmaCompensation;
   if(csmaCompensation <= m_currentScheduleItem->wifiPeriod)
   {
@@ -1370,6 +1372,7 @@ Hwn::WiFiMaclowCtsInjectSentCallback(Time duration)
     m_scheduleEventId.Cancel();
     m_scheduleEventId = Simulator::Schedule(duration,&Hwn::ChangeState,this,HWN_WS); // schedule to send next schedule item
   }else{
+    //BUG!!! should not go to HWN_CS, because the CTS has just been sent. should be LR-WPAN slot.
     //Error. Not engough wifi period to compensate csma delay;
     NS_LOG_WARN("CSMA compensation fail for HWN scheduling, thus return HWN_CS state");
     m_hwnState = HWN_CS;
