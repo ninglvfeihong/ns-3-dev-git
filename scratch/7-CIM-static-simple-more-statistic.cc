@@ -778,8 +778,8 @@ main (int argc, char *argv[])
 
   double desiredWiFiSpeed =0; 
   double desiredWiFiSpeedMax = 32; //Mbps
-  double desiredWiFiSpeedStep = 2; //Mbps
-  Time simulationTimePerRound = Seconds(15);
+  double desiredWiFiSpeedStep = 1; //Mbps
+  Time simulationTimePerRound = Seconds(300);
 
   std::ofstream simParams("SimParams.info");
   simParams << "Simulation parameters:" << std::endl;
