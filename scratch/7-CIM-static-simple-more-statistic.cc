@@ -1358,32 +1358,19 @@ Hwn::WiFiMaclowCtsInjectSentCallback(Time duration)
 
   Time csmaCompensation = m_currentScheduleItem->ctsStartSendingTime - m_currentScheduleItem->ctsInjectTime;
   if(csmaCompensation > m_currentScheduleItem->wifiPeriod) csmaCompensation = m_currentScheduleItem->wifiPeriod;
-
+  
+  csmaCompensation = Min(csmaCompensation, m_currentScheduleItem->wifiPeriod);
   m_currentScheduleItem->wifiSlotEndTime = m_currentScheduleItem->ctsSentTime + duration + m_currentScheduleItem->wifiPeriod - csmaCompensation;
-  if(csmaCompensation <= m_currentScheduleItem->wifiPeriod)
-  {
-    //wifi Period is enough for compensation, thus OK
-    McpsAnRequestParams anParams;
-    Time SpfDuration = m_currentScheduleItem->wifiPeriod + m_LrwpanExcessSP - csmaCompensation;
-    //minus NanoSeconds(1) ensure the LrwpanMcpsAnConfirm is called before  Simulator::Schedule(duration,&Hwn::ChangeState,this,HWN_WS);
-    anParams.m_GpExpire = (uint16_t) m_lrWpanMac->TimeToSymbol(duration - NanoSeconds(1)); 
-    anParams.m_SPF = (uint8_t) (m_lrWpanMac->TimeToSymbol(SpfDuration)/64);
-    m_lrWpanMac->McpsAnRequestImmediate(anParams);
-    m_scheduleEventId.Cancel();
-    m_scheduleEventId = Simulator::Schedule(duration,&Hwn::ChangeState,this,HWN_WS); // schedule to send next schedule item
-  }else{
-    //BUG!!! should not go to HWN_CS, because the CTS has just been sent. should be LR-WPAN slot.
-    //Error. Not engough wifi period to compensate csma delay;
-    NS_LOG_WARN("CSMA compensation fail for HWN scheduling, thus return HWN_CS state");
-    m_hwnState = HWN_CS;
-    Ptr<ScheduleConfirmParameters> param = Create<ScheduleConfirmParameters>();
-    param->status = HWN_CSMA_COMPENSATION_FAIL;
-    if(!m_scheduleConfirmCb.IsNull()) m_scheduleConfirmCb(param);
-    //cancel event and start next schedule if needed, by check schedule queue
-    m_scheduleEventId.Cancel();
-    m_canScheduleNext = true;
-    StartScheduleIfNeeded();
-  }
+
+  //wifi Period is enough for compensation, thus OK
+  McpsAnRequestParams anParams;
+  Time SpfDuration = m_currentScheduleItem->wifiPeriod + m_LrwpanExcessSP - csmaCompensation;
+  //minus NanoSeconds(1) ensure the LrwpanMcpsAnConfirm is called before  Simulator::Schedule(duration,&Hwn::ChangeState,this,HWN_WS);
+  anParams.m_GpExpire = (uint16_t) m_lrWpanMac->TimeToSymbol(duration - NanoSeconds(1)); 
+  anParams.m_SPF = (uint8_t) (m_lrWpanMac->TimeToSymbol(SpfDuration)/64);
+  m_lrWpanMac->McpsAnRequestImmediate(anParams);
+  m_scheduleEventId.Cancel();
+  m_scheduleEventId = Simulator::Schedule(duration,&Hwn::ChangeState,this,HWN_WS); // schedule to send next schedule item
 }
 
 void
