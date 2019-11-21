@@ -563,6 +563,50 @@ class Helper{
     Simulator::Schedule(start, &Helper::_LrWpanSendScheduleBroadcastSend, this,sender, end, interval);
   }
 
+  Time m_LrWpanSendScheduleUnicast_start;
+  Time m_LrWpanSendScheduleUnicast_end;
+  ns3::Ptr<ns3::Node> m_LrWpanSendScheduleUnicast_sender;
+  ns3::Ptr<ns3::Node> m_LrWpanSendScheduleUnicast_receiver;
+  uint64_t m_LrWpanSendScheduleUnicast_counter_ok = 0;
+  uint64_t m_LrWpanSendScheduleUnicast_counter_fail = 0;
+  double LrwpanUnicast_getPLR(void){
+    if(m_LrWpanSendScheduleUnicast_counter_ok + m_LrWpanSendScheduleUnicast_counter_fail == 0) return -1;
+    return m_LrWpanSendScheduleUnicast_counter_fail / (m_LrWpanSendScheduleUnicast_counter_fail + m_LrWpanSendScheduleUnicast_counter_ok);
+  }
+  double LrwpanUnicast_getPTR(void){
+    return m_LrWpanSendScheduleUnicast_counter_ok/(m_LrWpanSendScheduleUnicast_end.GetSeconds() - m_LrWpanSendScheduleUnicast_start.GetSeconds());
+  }
+  void LrwpanSenderCb(McpsDataConfirmParams params){
+    //NS_LOG_INFO("................<<" << params.m_status );
+    if(params.m_status == IEEE_802_15_4_SUCCESS){
+      m_LrWpanSendScheduleUnicast_counter_ok ++;
+    }else{
+      m_LrWpanSendScheduleUnicast_counter_fail ++;
+    }
+    if(Now() <= m_LrWpanSendScheduleUnicast_end)
+      Simulator::ScheduleNow(&Helper::_LrWpanSendScheduleUnicastSend, this, m_LrWpanSendScheduleUnicast_sender, m_LrWpanSendScheduleUnicast_receiver);
+  }
+  void _LrWpanSendScheduleUnicastSend(ns3::Ptr<ns3::Node> &sender, ns3::Ptr<ns3::Node> &receiver){
+    m_lrwpanScheduleCounter_tx++;
+    Address addr(receiver->GetDevice(0)->GetAddress());
+    LrWpanTestHeader hdr;
+    hdr.SetId(m_lrwpanScheduleCounter_tx);
+    Ptr<Packet> p = Create<Packet>(20-hdr.GetSerializedSize()); //20 byte packet
+    p->AddHeader(hdr);
+    sender->GetDevice(0)->Send(p, addr,0);
+  }
+  void
+  LrWpanSendScheduleUnicast(ns3::Ptr<ns3::Node> &sender,ns3::Ptr<ns3::Node> &receiver,
+                    const ns3::Time &start, const ns3::Time &end)
+  {
+    m_NetDevCb_reportTime = start;
+    m_LrWpanSendScheduleUnicast_start = start;
+    m_LrWpanSendScheduleUnicast_end = end;
+    m_LrWpanSendScheduleUnicast_sender = sender;
+    m_LrWpanSendScheduleUnicast_receiver = receiver;
+    Simulator::Schedule(start, &Helper::_LrWpanSendScheduleUnicastSend, this,sender, receiver);
+  }
+
 
   Time m_hwnStaticSchedule_lrwpanSlot = MilliSeconds(30);
   Time m_hwnStaticSchedule_wifiSlot = MilliSeconds(30);
@@ -778,8 +822,8 @@ main (int argc, char *argv[])
 
   double desiredWiFiSpeed =0; 
   double desiredWiFiSpeedMax = 32; //Mbps
-  double desiredWiFiSpeedStep = 1; //Mbps
-  Time simulationTimePerRound = Seconds(300);
+  double desiredWiFiSpeedStep = 5; //Mbps
+  Time simulationTimePerRound = Seconds(15);
 
   std::ofstream simParams("SimParams.info");
   simParams << "Simulation parameters:" << std::endl;
@@ -797,6 +841,11 @@ main (int argc, char *argv[])
   Gnuplot lrWpanPlrPlot = Gnuplot ();
   lrWpanPlrPlot.SetTitle("LR-WPAN Packet Loss Rate (PLR) vs desired WiFi speed");
   Gnuplot2dDataset lrWpanPlrdataset ("PLR");
+
+  std::ofstream lrWpanPtrPlotFile ("cim-static-simple-lrwpan-ptr.plt");
+  Gnuplot lrWpanPtrPlot = Gnuplot ();
+  lrWpanPtrPlot.SetTitle("LR-WPAN Packet Transmission Rate (PTR) vs desired WiFi speed");
+  Gnuplot2dDataset lrWpanPtrdataset ("PTR");
 
   std::ofstream lrWpanDelayPlotFile ("cim-static-simple-lrwpan-delay.plt");
   Gnuplot lrWpanDelayPlot = Gnuplot ();
@@ -882,7 +931,9 @@ main (int argc, char *argv[])
       //lrWpanHelper.AssociateToPan()
 
       //set Netdevice receiver
-      lrDevices.Get(0)->SetReceiveCallback(MakeCallback(&xiao::Helper::NetDevCb,&xiao_helper));
+      lrDevices.Get(0)->SetReceiveCallback(MakeCallback(&xiao::Helper::NetDevCb,&xiao_helper)); //receiver gateway
+      lrDevices.Get(1)->GetObject<LrWpanNetDevice>()->GetMac()->SetMcpsDataConfirmCallback(
+        MakeCallback(&xiao::Helper::LrwpanSenderCb,&xiao_helper));   //sender lrwpanNode
 
 
 
@@ -952,7 +1003,8 @@ main (int argc, char *argv[])
       xiao_helper.GenerateWiFiTrafficUdp(gateway,wifiApIpv4Interfaces.GetAddress (0),wifiStation,wifiStaIpv4Interfaces.GetAddress (0),
                                           desiredWiFiSpeed,Seconds(1),simulationTimePerRound);
       //stupid way scheduling lr-wpan packet seding
-      xiao_helper.LrWpanSendScheduleBroadcast(lrwpanNode, Seconds(1.12),simulationTimePerRound-Seconds(0.5),MilliSeconds(300));
+      //xiao_helper.LrWpanSendScheduleBroadcast(lrwpanNode, Seconds(1.12),simulationTimePerRound-Seconds(0.5),MilliSeconds(300));
+      xiao_helper.LrWpanSendScheduleUnicast(lrwpanNode,gateway,Seconds(1.12),simulationTimePerRound-Seconds(0.5));
 
       /********************************************************
        * configuration Hwn
@@ -975,11 +1027,13 @@ main (int argc, char *argv[])
       Simulator::Run ();
 
       NS_LOG_INFO("Round Overall:");
-      NS_LOG_INFO("LR-WPAN PLR:" << xiao_helper.GetLrWpanPLR()*1e2 <<"%");
+      NS_LOG_INFO("LR-WPAN PLR:" << xiao_helper.LrwpanUnicast_getPLR()*1e2 <<"%");
+      NS_LOG_INFO("LR-WPAN PTR:" << xiao_helper.LrwpanUnicast_getPTR() << " packet/s");
       NS_LOG_INFO("LR-WPAN Delay:" << xiao_helper.GetLrWpanDelay().GetSeconds()*1e3 <<" ms");
       NS_LOG_INFO("WiFi ThrouthPut:" << xiao_helper.GetUdpThroughtput() << " Mbps");
       NS_LOG_INFO("WiFi Delay:"<< xiao_helper.GetUdpDelay().GetSeconds()*1e3 <<" ms");
-      lrWpanPlrdataset.Add(desiredWiFiSpeed, xiao_helper.GetLrWpanPLR());
+      lrWpanPlrdataset.Add(desiredWiFiSpeed, xiao_helper.LrwpanUnicast_getPLR());
+      lrWpanPtrdataset.Add(desiredWiFiSpeed, xiao_helper.LrwpanUnicast_getPTR());
       lrWpanDelaydataset.Add(desiredWiFiSpeed, xiao_helper.GetLrWpanDelay().GetSeconds()*1e3);
       wifiThroughputdataset.Add(desiredWiFiSpeed, xiao_helper.GetUdpThroughtput() );
       wifiDelaydataset.Add(desiredWiFiSpeed,xiao_helper.GetUdpDelay().GetSeconds()*1e3);
@@ -998,6 +1052,7 @@ main (int argc, char *argv[])
       Simulator::Destroy ();
   }
   lrWpanPlrPlot.AddDataset(lrWpanPlrdataset);
+  lrWpanPtrPlot.AddDataset(lrWpanPtrdataset);
   lrWpanDelayPlot.AddDataset(lrWpanDelaydataset);
   wifiThroughputPlot.AddDataset(wifiThroughputdataset);
   wifiDelayPlot.AddDataset(wifiDelaydataset);
@@ -1026,6 +1081,16 @@ set style line 2 lw 2 ps 2\n\
 set style increment user");
   lrWpanPlrPlot.GenerateOutput (lrWpanPlrPlotFile);
   lrWpanPlrPlotFile.close ();
+
+  lrWpanPtrPlot.SetLegend ("Desired WiFi Speed (Mbps)", "Packet Transmission Rate (packet/s)");
+  lrWpanPtrPlot.SetExtra  (
+"set xrange [0:32]\n\
+set grid\n\
+set style line 1 lw 2 ps 2\n\
+set style line 2 lw 2 ps 2\n\
+set style increment user");
+  lrWpanPtrPlot.GenerateOutput (lrWpanPtrPlotFile);
+  lrWpanPtrPlotFile.close ();
   
   //lrWpanDelaySchdataset.SetStyle(Gnuplot2dDataset::LINES_POINTS);
   lrWpanDelayPlot.SetLegend ("Desired WiFi Speed (Mbps)", "LR-WPAN Packet Delay (ms)");
