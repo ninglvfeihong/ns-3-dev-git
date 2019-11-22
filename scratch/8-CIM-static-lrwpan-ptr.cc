@@ -571,7 +571,7 @@ class Helper{
   uint64_t m_LrWpanSendScheduleUnicast_counter_fail = 0;
   double LrwpanUnicast_getPLR(void){
     if(m_LrWpanSendScheduleUnicast_counter_ok + m_LrWpanSendScheduleUnicast_counter_fail == 0) return -1;
-    return m_LrWpanSendScheduleUnicast_counter_fail / (m_LrWpanSendScheduleUnicast_counter_fail + m_LrWpanSendScheduleUnicast_counter_ok);
+    return m_LrWpanSendScheduleUnicast_counter_fail*1.0 / (m_LrWpanSendScheduleUnicast_counter_fail + m_LrWpanSendScheduleUnicast_counter_ok);
   }
   double LrwpanUnicast_getPTR(void){
     return m_LrWpanSendScheduleUnicast_counter_ok/(m_LrWpanSendScheduleUnicast_end.GetSeconds() - m_LrWpanSendScheduleUnicast_start.GetSeconds());
@@ -822,8 +822,8 @@ main (int argc, char *argv[])
 
   double desiredWiFiSpeed =0; 
   double desiredWiFiSpeedMax = 32; //Mbps
-  double desiredWiFiSpeedStep = 5; //Mbps
-  Time simulationTimePerRound = Seconds(15);
+  double desiredWiFiSpeedStep = 1; //Mbps
+  Time simulationTimePerRound = Seconds(300);
 
   std::ofstream simParams("SimParams.info");
   simParams << "Simulation parameters:" << std::endl;

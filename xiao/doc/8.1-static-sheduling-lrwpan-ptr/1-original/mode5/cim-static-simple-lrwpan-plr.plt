@@ -1,0 +1,43 @@
+set title "LR-WPAN Packet Loss Rate (PLR) vs desired WiFi speed"
+set xlabel "Desired WiFi Speed (Mbps)"
+set ylabel "Packet Loss Rate (PLR)"
+set xrange [0:32]
+set grid
+set style line 1 lw 2 ps 2
+set style line 2 lw 2 ps 2
+set style increment user
+plot "-"  title "PLR" with lines
+0 0
+1 0
+2 0
+3 0
+4 0
+5 0
+6 0.000392388
+7 0.000491207
+8 0.00117786
+9 0.000984543
+10 0.00108706
+11 0.000988338
+12 0.00177655
+13 0.00304309
+14 0.00483425
+15 0.00406061
+16 0.00684796
+17 0.00682898
+18 0.00818137
+19 0.00653013
+20 0.0093254
+21 0.0103888
+22 0.0100791
+23 0.0170864
+24 0.0285911
+25 0.0774785
+26 0.062017
+27 0.0581372
+28 0.0639328
+29 0.0718527
+30 0.0654639
+31 0.0640886
+32 0.0614941
+e
