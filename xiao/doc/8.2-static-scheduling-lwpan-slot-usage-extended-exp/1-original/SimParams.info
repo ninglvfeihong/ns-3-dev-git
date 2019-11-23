@@ -1,0 +1,42 @@
+round:1
+Simulation parameters:
+isWithScheduling: 1
+WiFi slot: 15 ms
+simulationTimePerRound: 300s
+
+round:2
+Simulation parameters:
+isWithScheduling: 1
+WiFi slot: 30 ms
+simulationTimePerRound: 300s
+
+round:3
+Simulation parameters:
+isWithScheduling: 1
+WiFi slot: 50 ms
+simulationTimePerRound: 300s
+
+round:4
+Simulation parameters:
+isWithScheduling: 1
+WiFi slot: 100 ms
+simulationTimePerRound: 300s
+
+round:5
+Simulation parameters:
+isWithScheduling: 1
+WiFi slot: 150 ms
+simulationTimePerRound: 300s
+
+round:6
+Simulation parameters:
+isWithScheduling: 1
+WiFi slot: 200 ms
+simulationTimePerRound: 300s
+
+round:7
+Simulation parameters:
+isWithScheduling: 1
+WiFi slot: 250 ms
+simulationTimePerRound: 300s
+
