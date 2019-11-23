@@ -846,13 +846,19 @@ main (int argc, char *argv[])
     }
 
     Gnuplot2dDataset lrWpanPtrdataset ("wifi slot:"+ std::to_string(wifiSlot.GetMilliSeconds()) + "ms");
+    lrWpanPtrdataset.SetStyle(Gnuplot2dDataset::LINES_POINTS);
     Gnuplot2dDataset lrWpanDelaydataset ("wifi slot:"+ std::to_string(wifiSlot.GetMilliSeconds()) + "ms");
+    lrWpanDelaydataset.SetStyle(Gnuplot2dDataset::LINES_POINTS);
     Gnuplot2dDataset scheduleMgntAverageDelaydataset ("wifi slot:"+ std::to_string(wifiSlot.GetMilliSeconds()) + "ms");
+    scheduleMgntAverageDelaydataset.SetStyle(Gnuplot2dDataset::LINES_POINTS);
     Gnuplot2dDataset scheduleMgntOverheaddataset ("wifi slot:"+ std::to_string(wifiSlot.GetMilliSeconds()) + "ms");
+    scheduleMgntOverheaddataset.SetStyle(Gnuplot2dDataset::LINES_POINTS);
     Gnuplot2dDataset scheduleMgntLrwpanSlotUsagedataset ("wifi slot:"+ std::to_string(wifiSlot.GetMilliSeconds()) + "ms");
-    Time lrwpanSlot = MilliSeconds(5);      // ms
-    Time lrwpanSlotMax = MilliSeconds(30);  // ms
-    Time lrwpanSlotStep = MilliSeconds(5) ; // ms
+    scheduleMgntLrwpanSlotUsagedataset.SetStyle(Gnuplot2dDataset::LINES_POINTS);
+
+    Time lrwpanSlot = MilliSeconds(1);      // ms
+    Time lrwpanSlotMax = MilliSeconds(31);  // ms
+    Time lrwpanSlotStep = MilliSeconds(1) ; // ms
     
 
     simParams << "round:" << mode << std::endl;
@@ -1000,7 +1006,7 @@ main (int argc, char *argv[])
       
 
 
-      Simulator::Stop (simulationTimePerRound+Seconds(0.5));
+      Simulator::Stop (simulationTimePerRound);
       //xiao_helper.PlaceSpectrum(channel,Vector(5,5,0),Seconds(0.1),Seconds(3),MicroSeconds(1000));
       //xiao_helper.ConfigStorShow();
       //xiao_helper.makeAnim();
@@ -1048,14 +1054,12 @@ main (int argc, char *argv[])
   //lrWpanPlrPlot.SetTerminal ("wxt size 350,262 enhanced font 'Verdana,10' persist");
   
   //lrWpanPlrSchdataset.SetStyle(Gnuplot2dDataset::LINES_POINTS);
-
   lrWpanPtrPlot.SetLegend ("Lr-Wpan slot (ms)", "Packet Transmission Rate (packet/s)");
   lrWpanPtrPlot.SetExtra  (
 "set xrange [0:32]\n\
 set grid\n\
 set key left\n\
-set style line 1 lw 2 ps 2\n\
-set style line 2 lw 2 ps 2\n\
+set for [i=1:7] style line 1 lw 1 ps 1\n\
 set style increment user");
   lrWpanPtrPlot.GenerateOutput (lrWpanPtrPlotFile);
   lrWpanPtrPlotFile.close ();
@@ -1065,8 +1069,7 @@ set style increment user");
   lrWpanDelayPlot.SetExtra  ("\
 set xrange [0:32]\n\
 set grid\n\
-set style line 1 lw 2 ps 2\n\
-set style line 2 lw 2 ps 2\n\
+set for [i=1:7] style line 1 lw 1 ps 1\n\
 set style increment user");
   lrWpanDelayPlot.GenerateOutput (lrWpanDelayPlotFile);
   lrWpanDelayPlotFile.close ();
@@ -1075,8 +1078,7 @@ set style increment user");
   scheduleMgntAverageDelayPlot.SetExtra  ("\
 set xrange [0:32]\n\
 set grid\n\
-set style line 1 lw 2 ps 2\n\
-set style line 2 lw 2 ps 2\n\
+set for [i=1:7] style line 1 lw 1 ps 1\n\
 set style increment user");
   scheduleMgntAverageDelayPlot.GenerateOutput (scheduleMgntAverageDelayFile);
   scheduleMgntAverageDelayFile.close ();
@@ -1086,8 +1088,7 @@ set style increment user");
   scheduleMgntOverheadPlot.SetExtra  (
 "set xrange [0:32]\n\
 set grid\n\
-set style line 1 lw 2 ps 2\n\
-set style line 2 lw 2 ps 2\n\
+set for [i=1:7] style line 1 lw 1 ps 1\n\
 set style increment user");
   scheduleMgntOverheadPlot.GenerateOutput (scheduleMgntOverheadFile);
   scheduleMgntOverheadFile.close ();
@@ -1098,8 +1099,7 @@ set style increment user");
 "set xrange [0:32]\n\
 set grid\n\
 set key right bottom\n\
-set style line 1 lw 2 ps 2\n\
-set style line 2 lw 2 ps 2\n\
+set for [i=1:7] style line 1 lw 1 ps 1\n\
 set style increment user");
   scheduleMgntLrwpanSlotUsagePlot.GenerateOutput (scheduleMgntLrwpanSlotUsageFile);
   scheduleMgntLrwpanSlotUsageFile.close ();
