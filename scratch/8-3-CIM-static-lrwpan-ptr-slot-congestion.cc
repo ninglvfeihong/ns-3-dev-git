@@ -819,7 +819,7 @@ main (int argc, char *argv[])
   double desiredWiFiSpeed =0; 
   // double desiredWiFiSpeedMax = 32; //Mbps
   // double desiredWiFiSpeedStep = 100; //Mbps
-  Time simulationTimePerRound = Seconds(10);
+  Time simulationTimePerRound = Seconds(300);
 
   std::ofstream simParams("SimParams.info");
 
@@ -913,7 +913,7 @@ main (int argc, char *argv[])
 
     Time lrwpanSlot = MilliSeconds(1);      // ms
     Time lrwpanSlotMax = MilliSeconds(31);  // ms
-    Time lrwpanSlotStep = MilliSeconds(3) ; // ms
+    Time lrwpanSlotStep = MilliSeconds(1) ; // ms
     
 
     simParams << "round:" << mode << std::endl;
