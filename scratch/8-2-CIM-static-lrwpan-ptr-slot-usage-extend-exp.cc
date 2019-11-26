@@ -890,7 +890,7 @@ main (int argc, char *argv[])
       //install Mobility to nodes;
       Ptr<Node> gateway = nodes.Get(0);
       Ptr<Node> lrwpanNode = nodes.Get(1);
-      Ptr<Node> wifiStation = nodes.Get(1);
+      Ptr<Node> wifiStation = nodes.Get(2);
       ns3::Ptr<ListPositionAllocator> locationAllocator = ns3::CreateObject<ListPositionAllocator>();
       locationAllocator->Add(ns3::Vector(0,5,0));     //gateway
       locationAllocator->Add(ns3::Vector(10,0,0));  //lrwpanNode
