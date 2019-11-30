@@ -567,8 +567,8 @@ class Helper{
   Time m_LrWpanSendScheduleUnicast_end;
   ns3::Ptr<ns3::Node> m_LrWpanSendScheduleUnicast_sender;
   ns3::Ptr<ns3::Node> m_LrWpanSendScheduleUnicast_receiver;
-  uint64_t m_LrWpanSendScheduleUnicast_counter_ok = 0;
-  uint64_t m_LrWpanSendScheduleUnicast_counter_fail = 0;
+  static uint64_t m_LrWpanSendScheduleUnicast_counter_ok ;
+  static uint64_t m_LrWpanSendScheduleUnicast_counter_fail ;
   double LrwpanUnicast_getPLR(void){
     if(m_LrWpanSendScheduleUnicast_counter_ok + m_LrWpanSendScheduleUnicast_counter_fail == 0) return -1;
     return m_LrWpanSendScheduleUnicast_counter_fail*1.0 / (m_LrWpanSendScheduleUnicast_counter_fail + m_LrWpanSendScheduleUnicast_counter_ok);
@@ -600,7 +600,7 @@ class Helper{
     sender->GetDevice(0)->Send(p, addr,0);
   }
   void
-  LrWpanSendScheduleUnicast(ns3::Ptr<ns3::Node> &sender,ns3::Ptr<ns3::Node> &receiver,
+  LrWpanSendScheduleUnicast(const ns3::Ptr<ns3::Node> &sender,ns3::Ptr<ns3::Node> &receiver,
                     const ns3::Time &start, const ns3::Time &end)
   {
     m_NetDevCb_reportTime = start;
@@ -608,6 +608,9 @@ class Helper{
     m_LrWpanSendScheduleUnicast_end = end;
     m_LrWpanSendScheduleUnicast_sender = sender;
     m_LrWpanSendScheduleUnicast_receiver = receiver;
+    //static member initialization
+    m_LrWpanSendScheduleUnicast_counter_ok = 0;
+    m_LrWpanSendScheduleUnicast_counter_fail = 0;
     Simulator::Schedule(start, &Helper::_LrWpanSendScheduleUnicastSend, this,sender, receiver);
   }
 
@@ -736,6 +739,8 @@ class Helper{
 };
 
 
+  uint64_t Helper::m_LrWpanSendScheduleUnicast_counter_ok = 0;
+  uint64_t Helper::m_LrWpanSendScheduleUnicast_counter_fail = 0;
 
 
 void
@@ -806,6 +811,7 @@ main (int argc, char *argv[])
   //Packet::EnableChecking();
 
   int mode  = 7;
+  int lrwpanNodeN = 1; //number of lrwpan sending nodes
   int lrwpanPayloadSize = 20;
   CommandLine cmd;
   cmd.Usage ("run simulation in different mode");
@@ -819,7 +825,7 @@ main (int argc, char *argv[])
   double desiredWiFiSpeed =0; 
   // double desiredWiFiSpeedMax = 32; //Mbps
   // double desiredWiFiSpeedStep = 100; //Mbps
-  Time simulationTimePerRound = Seconds(300);
+  Time simulationTimePerRound = Seconds(10);
 
   std::ofstream simParams("SimParams.info");
 
@@ -857,38 +863,31 @@ main (int argc, char *argv[])
     switch (mode){
     case 1:
       isWithScheduling = true;
-      wifiSlot = MilliSeconds(30);
-      lrwpanPayloadSize = 12;
+      lrwpanNodeN = 1;
       break;
     case 2:
       isWithScheduling = true;
-      wifiSlot = MilliSeconds(30);
-      lrwpanPayloadSize = 20;
+      lrwpanNodeN = 2;
       break;
     case 3:
       isWithScheduling = true;
-      wifiSlot = MilliSeconds(30);
-      lrwpanPayloadSize = 30;
+      lrwpanNodeN = 3;
       break;
     case 4:
       isWithScheduling = true;
-      wifiSlot = MilliSeconds(30);
-      lrwpanPayloadSize = 40;
+      lrwpanNodeN = 4;
       break;
     case 5:
       isWithScheduling = true;
-      wifiSlot = MilliSeconds(30);
-      lrwpanPayloadSize = 60;
+      lrwpanNodeN = 5;
       break;
     case 6:
       isWithScheduling = true;
-      wifiSlot = MilliSeconds(30);
-      lrwpanPayloadSize = 80;
+      lrwpanNodeN = 6;
       break;
     case 7:
       isWithScheduling = true;
-      wifiSlot = MilliSeconds(30);
-      lrwpanPayloadSize = 100;
+      lrwpanNodeN = 7;
       break;
     default:
       NS_LOG_UNCOND("mode not supported");
@@ -896,30 +895,31 @@ main (int argc, char *argv[])
       break;
     }
 
-    Gnuplot2dDataset lrWpanPtrdataset ("payload:"+ std::to_string(lrwpanPayloadSize) + "B");
+    Gnuplot2dDataset lrWpanPtrdataset ("Sender number:"+ std::to_string(lrwpanNodeN));
     lrWpanPtrdataset.SetStyle(Gnuplot2dDataset::LINES_POINTS);
-    Gnuplot2dDataset lrWpanPcdataset ("payload:"+ std::to_string(lrwpanPayloadSize) + "B");
+    Gnuplot2dDataset lrWpanPcdataset ("Sender number:"+ std::to_string(lrwpanNodeN));
     lrWpanPcdataset.SetStyle(Gnuplot2dDataset::LINES_POINTS);
-    Gnuplot2dDataset lrWpanCidataset ("payload:"+ std::to_string(lrwpanPayloadSize) + "B");
+    Gnuplot2dDataset lrWpanCidataset ("Sender number:"+ std::to_string(lrwpanNodeN));
     lrWpanCidataset.SetStyle(Gnuplot2dDataset::LINES_POINTS);
-    Gnuplot2dDataset lrWpanDelaydataset ("payload:"+ std::to_string(lrwpanPayloadSize) + "B");
+    Gnuplot2dDataset lrWpanDelaydataset ("Sender number:"+ std::to_string(lrwpanNodeN));
     lrWpanDelaydataset.SetStyle(Gnuplot2dDataset::LINES_POINTS);
-    Gnuplot2dDataset scheduleMgntAverageDelaydataset ("payload:"+ std::to_string(lrwpanPayloadSize) + "B");
+    Gnuplot2dDataset scheduleMgntAverageDelaydataset ("Sender number:"+ std::to_string(lrwpanNodeN));
     scheduleMgntAverageDelaydataset.SetStyle(Gnuplot2dDataset::LINES_POINTS);
-    Gnuplot2dDataset scheduleMgntOverheaddataset ("payload:"+ std::to_string(lrwpanPayloadSize) + "B");
+    Gnuplot2dDataset scheduleMgntOverheaddataset ("Sender number:"+ std::to_string(lrwpanNodeN));
     scheduleMgntOverheaddataset.SetStyle(Gnuplot2dDataset::LINES_POINTS);
-    Gnuplot2dDataset scheduleMgntLrwpanSlotUsagedataset ("payload:"+ std::to_string(lrwpanPayloadSize) + "B");
+    Gnuplot2dDataset scheduleMgntLrwpanSlotUsagedataset ("Sender number:"+ std::to_string(lrwpanNodeN));
     scheduleMgntLrwpanSlotUsagedataset.SetStyle(Gnuplot2dDataset::LINES_POINTS);
 
     Time lrwpanSlot = MilliSeconds(1);      // ms
     Time lrwpanSlotMax = MilliSeconds(31);  // ms
-    Time lrwpanSlotStep = MilliSeconds(1) ; // ms
+    Time lrwpanSlotStep = MilliSeconds(4) ; // ms
     
 
     simParams << "round:" << mode << std::endl;
     simParams << "Simulation parameters:" << std::endl;
     simParams << "isWithScheduling: " << isWithScheduling << std::endl;
     simParams << "lrwpanPayloadSize: " << lrwpanPayloadSize << std::endl;
+    simParams << "sender number: " << lrwpanNodeN << std::endl;
     if(isWithScheduling){
       simParams << "WiFi slot: " << wifiSlot.GetSeconds()*1e3 << " ms" << std::endl;
     }
@@ -928,7 +928,8 @@ main (int argc, char *argv[])
     for(; lrwpanSlot <= lrwpanSlotMax; lrwpanSlot += lrwpanSlotStep)
     {
 
-      xiao::Helper xiao_helper;
+      xiao::Helper xiao_helper_lrwpan[lrwpanNodeN];
+      xiao::Helper &xiao_helper = xiao_helper_lrwpan[0];
       xiao_helper.HwnStaticScheduleSetLrwpanslot(lrwpanSlot);
       xiao_helper.HwnStaticScheduleSetWifiSlot(wifiSlot);
       xiao_helper.LrwpanUnicast_setPayloadSize(lrwpanPayloadSize);
@@ -936,7 +937,10 @@ main (int argc, char *argv[])
       // Configure LR-WPAN
       /////////////////////////////////
       ns3::NodeContainer nodes;
-      nodes.Create(3);
+      nodes.Create(2);
+      NodeContainer lrwpanNodes;
+      lrwpanNodes.Create(lrwpanNodeN);
+      nodes.Add(lrwpanNodes);
 
       LrWpanHelper lrWpanHelper(true);
       /*if (verbose)
@@ -946,12 +950,12 @@ main (int argc, char *argv[])
       
       //install Mobility to nodes;
       Ptr<Node> gateway = nodes.Get(0);
-      Ptr<Node> lrwpanNode = nodes.Get(1);
-      Ptr<Node> wifiStation = nodes.Get(2);
+      Ptr<Node> wifiStation = nodes.Get(1);
       ns3::Ptr<ListPositionAllocator> locationAllocator = ns3::CreateObject<ListPositionAllocator>();
       locationAllocator->Add(ns3::Vector(0,5,0));     //gateway
-      locationAllocator->Add(ns3::Vector(10,0,0));  //lrwpanNode
       locationAllocator->Add(ns3::Vector(10,10,0));  //wifi station
+      for(int i=0;i<lrwpanNodeN;i++)locationAllocator->Add(ns3::Vector(10,0,0));  //lrwpanNodes
+
       MobilityHelper mobility;
       mobility.SetPositionAllocator(locationAllocator);
       mobility.Install(nodes);
@@ -959,24 +963,26 @@ main (int argc, char *argv[])
 
       ns3::NodeContainer lrPandNodes;
       lrPandNodes.Add(gateway);
-      lrPandNodes.Add(lrwpanNode);
+      lrPandNodes.Add(lrwpanNodes);
       //Create and install LrWpanNetDevices into nodes in nodes container by using LrWpanHelper
       ns3::NetDeviceContainer lrDevices = lrWpanHelper.Install(lrPandNodes);
 
       LrWpanPhyPibAttributes lrWpanPibAttribute;
       lrWpanPibAttribute.phyCurrentChannel = 17;
-      lrDevices.Get(0)->GetObject<LrWpanNetDevice>()->GetPhy()->PlmeSetAttributeRequest(ns3::LrWpanPibAttributeIdentifier::phyCurrentChannel,&lrWpanPibAttribute);
-      lrDevices.Get(1)->GetObject<LrWpanNetDevice>()->GetPhy()->PlmeSetAttributeRequest(ns3::LrWpanPibAttributeIdentifier::phyCurrentChannel,&lrWpanPibAttribute);
-
-      //setup MAC addres
-      lrDevices.Get(0)->SetAddress(ns3::Mac16Address("00:00"));
-      lrDevices.Get(1)->SetAddress(ns3::Mac16Address("00:01"));
+      for(unsigned int i =0;i<lrDevices.GetN();i++){
+        lrDevices.Get(i)->GetObject<LrWpanNetDevice>()->GetPhy()->PlmeSetAttributeRequest(ns3::LrWpanPibAttributeIdentifier::phyCurrentChannel,&lrWpanPibAttribute);
+        //setup MAC addres
+        lrDevices.Get(i)->SetAddress(ns3::Mac16Address(("00:" + std::to_string(i)).c_str()));
+        
+      }
+      for(int i =0;i<lrwpanNodeN;i++){
+        lrDevices.Get(i+1)->GetObject<LrWpanNetDevice>()->GetMac()->SetMcpsDataConfirmCallback(
+          MakeCallback(&xiao::Helper::LrwpanSenderCb,&xiao_helper_lrwpan[i]));   //sender lrwpanNode
+      }
       //lrWpanHelper.AssociateToPan()
 
       //set Netdevice receiver
       lrDevices.Get(0)->SetReceiveCallback(MakeCallback(&xiao::Helper::NetDevCb,&xiao_helper)); //receiver gateway
-      lrDevices.Get(1)->GetObject<LrWpanNetDevice>()->GetMac()->SetMcpsDataConfirmCallback(
-        MakeCallback(&xiao::Helper::LrwpanSenderCb,&xiao_helper));   //sender lrwpanNode
 
 
 
@@ -1047,7 +1053,8 @@ main (int argc, char *argv[])
                                           desiredWiFiSpeed,Seconds(1),simulationTimePerRound);
       //stupid way scheduling lr-wpan packet seding
       //xiao_helper.LrWpanSendScheduleBroadcast(lrwpanNode, Seconds(1.12),simulationTimePerRound-Seconds(0.5),MilliSeconds(300));
-      xiao_helper.LrWpanSendScheduleUnicast(lrwpanNode,gateway,Seconds(1.12),simulationTimePerRound-Seconds(0.5));
+      for (int i =0;i<lrwpanNodeN;i++)
+        xiao_helper_lrwpan[i].LrWpanSendScheduleUnicast(lrwpanNodes.Get(i),gateway,Seconds(1.12),simulationTimePerRound-Seconds(0.5));
 
       /********************************************************
        * configuration Hwn
@@ -1064,7 +1071,7 @@ main (int argc, char *argv[])
 
 
       Simulator::Stop (simulationTimePerRound);
-      //xiao_helper.PlaceSpectrum(channel,Vector(5,5,0),Seconds(0.1),Seconds(3),MicroSeconds(1000));
+      xiao_helper.PlaceSpectrum(channel,Vector(5,5,0),Seconds(0.1),Seconds(3),MicroSeconds(1000));
       //xiao_helper.ConfigStorShow();
       //xiao_helper.makeAnim();
       Simulator::Run ();
