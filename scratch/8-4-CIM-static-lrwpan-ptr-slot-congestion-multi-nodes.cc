@@ -825,7 +825,7 @@ main (int argc, char *argv[])
   double desiredWiFiSpeed =0; 
   // double desiredWiFiSpeedMax = 32; //Mbps
   // double desiredWiFiSpeedStep = 100; //Mbps
-  Time simulationTimePerRound = Seconds(10);
+  Time simulationTimePerRound = Seconds(300);
 
   std::ofstream simParams("SimParams.info");
 
@@ -912,7 +912,7 @@ main (int argc, char *argv[])
 
     Time lrwpanSlot = MilliSeconds(1);      // ms
     Time lrwpanSlotMax = MilliSeconds(31);  // ms
-    Time lrwpanSlotStep = MilliSeconds(4) ; // ms
+    Time lrwpanSlotStep = MilliSeconds(1) ; // ms
     
 
     simParams << "round:" << mode << std::endl;
@@ -1071,7 +1071,7 @@ main (int argc, char *argv[])
 
 
       Simulator::Stop (simulationTimePerRound);
-      xiao_helper.PlaceSpectrum(channel,Vector(5,5,0),Seconds(0.1),Seconds(3),MicroSeconds(1000));
+      //xiao_helper.PlaceSpectrum(channel,Vector(5,5,0),Seconds(0.1),Seconds(3),MicroSeconds(1000));
       //xiao_helper.ConfigStorShow();
       //xiao_helper.makeAnim();
       Simulator::Run ();
