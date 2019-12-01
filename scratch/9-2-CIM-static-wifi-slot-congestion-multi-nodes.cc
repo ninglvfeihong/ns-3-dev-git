@@ -851,7 +851,7 @@ main (int argc, char *argv[])
   double desiredWiFiSpeed =32; 
   // double desiredWiFiSpeedMax = 32; //Mbps
   // double desiredWiFiSpeedStep = 100; //Mbps
-  Time simulationTimePerRound = Seconds(5);
+  Time simulationTimePerRound = Seconds(40);
 
   std::ofstream simParams("SimParams.info");
 
@@ -941,7 +941,7 @@ main (int argc, char *argv[])
 
     Time wifiSlot = MilliSeconds(5);
     Time wifiSlotMax = MilliSeconds(250);  // ms
-    Time wifiSlotStep = MilliSeconds(45) ; // ms
+    Time wifiSlotStep = MilliSeconds(10) ; // ms
 
     simParams << "round:" << mode << std::endl;
     simParams << "Simulation parameters:" << std::endl;
@@ -961,10 +961,12 @@ main (int argc, char *argv[])
       xiao::Helper xiao_helper_lrwpan[lrwpanNodeN];
       xiao::Helper xiao_helper_wifi[wifiAdditionalStaN];
       xiao::Helper &xiao_helper = xiao_helper_lrwpan[0];
-      xiao_helper.GenerateWiFiTraffic_setPacketSize(wifiPacketSize);
       xiao_helper.HwnStaticScheduleSetLrwpanslot(lrwpanSlot);
       xiao_helper.HwnStaticScheduleSetWifiSlot(wifiSlot);
+      xiao_helper.GenerateWiFiTraffic_setPacketSize(wifiPacketSize);
       xiao_helper.LrwpanUnicast_setPayloadSize(lrwpanPayloadSize);
+      for(int i=0;i<wifiAdditionalStaN;i++) xiao_helper_wifi[i].GenerateWiFiTraffic_setPacketSize(wifiPacketSize);
+      for(int i=0;i<lrwpanNodeN;i++) xiao_helper_lrwpan[i].LrwpanUnicast_setPayloadSize(lrwpanPayloadSize);
       /////////////////////////////////
       // Configure LR-WPAN
       /////////////////////////////////
@@ -1197,6 +1199,7 @@ set style increment user");
   wifiCiPlot.SetLegend ("WiFi slot (ms)", "Congestion indicator");
   wifiCiPlot.SetExtra  (
 "set xrange [0:250]\n\
+set yrange [0:1.1]\n\
 set grid\n\
 set key left\n\
 set for [i=1:7] style line 1 lw 1 ps 1\n\
@@ -1542,6 +1545,9 @@ Hwn::LrwpanMcpsAnConfirm(struct McpsAnConfirmParams anParam)
 void
 Hwn::CtsWaitTimeout(void)
 {
+  //Normally, this function will never be called. aCWmax is 1023, (2**10). 
+  //802.11 CSMA with NAV, once backoff timeup, this frame is definately be sent out. due to CTS is a command frame that 
+  //doesn't require ack, thus there is no concept of failure. 
   NS_LOG_FUNCTION(this);
   //CTS wait timeout, means scheduling fail, the CTS is not sent out
   m_hwnState = HWN_CS;

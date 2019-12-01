@@ -933,6 +933,7 @@ main (int argc, char *argv[])
       xiao_helper.HwnStaticScheduleSetLrwpanslot(lrwpanSlot);
       xiao_helper.HwnStaticScheduleSetWifiSlot(wifiSlot);
       xiao_helper.LrwpanUnicast_setPayloadSize(lrwpanPayloadSize);
+      for(int i=0;i<lrwpanNodeN;i++) xiao_helper_lrwpan[i].LrwpanUnicast_setPayloadSize(lrwpanPayloadSize);
       /////////////////////////////////
       // Configure LR-WPAN
       /////////////////////////////////
