@@ -839,8 +839,8 @@ main (int argc, char *argv[])
   cmd.AddValue ("mode",  "an int argument", mode);
   cmd.Parse (argc, argv);
   
-  //uint32_t wifiPacketSize = 1472;
-  uint32_t wifiPacketSize = 400;
+  uint32_t wifiPacketSize = 1472;
+  //uint32_t wifiPacketSize = 400;
   bool isWithScheduling;
 
   Time lrwpanSlot = MilliSeconds(30);      // ms
