@@ -400,6 +400,10 @@ class Helper{
   Time m_GenerateWiFiTrafficTxCbReportTime;
   Time m_GenerateWiFiTrafficRxCbReportTime;
   uint64_t m_GenerateWiFiTrafficTxCbBytes = 0;
+  uint64_t m_GenerateWiFiTraffic_packetSize = 1472;
+  void GenerateWiFiTraffic_setPacketSize(uint64_t packetSize){
+    m_GenerateWiFiTraffic_packetSize = packetSize;
+  }
   void _GenerateWiFiTrafficTxCb(Ptr<const Packet> p){
     m_GenerateWiFiTrafficTxCbBytes+=p->GetSize();
     if(ns3::Now()-m_GenerateWiFiTrafficTxCbReportTime > Seconds(1)){
@@ -416,7 +420,7 @@ class Helper{
     }
   }
   void GenerateWiFiTraffic(Ptr<Node> server, ns3::Ipv4Address addr, uint16_t port, Ptr<Node> client, double speedIn_mbps, Time start, Time stop){
-    uint64_t pcketSize = 1472;
+    uint64_t pcketSize = m_GenerateWiFiTraffic_packetSize;
     double interval = (pcketSize*8*2/*send and echo data*/)/(1e6*speedIn_mbps);
     UdpEchoServerHelper echoServer (port);
 
@@ -484,7 +488,7 @@ class Helper{
     rand->SetAttribute ("Min", DoubleValue (0.0));
     rand->SetAttribute ("Max", DoubleValue (0.001));
 
-    uint64_t pcketSize = 1472;
+    uint64_t pcketSize = m_GenerateWiFiTraffic_packetSize;
     double interval = (pcketSize*8*2/*send and echo data*/)/(1e6*speedIn_mbps);
     UdpServerHelper udpServer;
     NodeContainer nodes;
@@ -721,8 +725,13 @@ class Helper{
     return (extraTime + suffixTime + hwnStatistic.lrwpanCBTSum).GetSeconds()/hwnStatistic.lrwpanPeriodSum.GetSeconds();
   }
   double HwnGetCiWifi(void){ //congetion indicator
-    //not impelmented yet
-    return 0;
+    //Wifi SIFT is the minimum space require between different packet.
+    //slot time: 20 us
+    //PIFS: SIFT+ slotTime
+    // thus the congestion indicator can be defined as.
+    // ((SIFT*0.5 + (2*slotTime+PIFT)*0.5)*wifiPacketCount + wifiCBT)/wifiPeriodSum
+    // SIFT for 802.11 b/g/n is 10us 
+    return (MicroSeconds(40)*hwnStatistic.wifiPacketCount + hwnStatistic.wifiCBTSum).GetSeconds()/hwnStatistic.wifiPeriodSum.GetSeconds() ;
   }
   void HwnStaticScheduleStart(){
     HwnStatisticInit();
@@ -818,30 +827,35 @@ main (int argc, char *argv[])
   cmd.AddValue ("mode",  "an int argument", mode);
   cmd.Parse (argc, argv);
   
+  uint32_t wifiPacketSize = 1472;
   bool isWithScheduling;
-  Time wifiSlot = MilliSeconds(30);
+
+  Time lrwpanSlot = MilliSeconds(30);      // ms
+  // Time lrwpanSlotMax = MilliSeconds(31);  // ms
+  // Time lrwpanSlotStep = MilliSeconds(4) ; // ms
 
 
-  double desiredWiFiSpeed =0; 
+  double desiredWiFiSpeed =32; 
   // double desiredWiFiSpeedMax = 32; //Mbps
   // double desiredWiFiSpeedStep = 100; //Mbps
-  Time simulationTimePerRound = Seconds(300);
+  Time simulationTimePerRound = Seconds(40);
 
   std::ofstream simParams("SimParams.info");
 
-  std::ofstream lrWpanPtrPlotFile ("cim-static-simple-lrwpan-ptr.plt");
-  Gnuplot lrWpanPtrPlot = Gnuplot ();
-  lrWpanPtrPlot.SetTitle("LR-WPAN Packet Transmission Rate (PTR) vs Lr-Wpan slot length");
+  std::ofstream wifiThroughputPlotFile ("cim-static-simple-wifi-throughput.plt");
+  Gnuplot wifiThroughputPlot = Gnuplot ();
+  wifiThroughputPlot.SetTitle("WiFi real speed vs desired WiFi speed");
 
-  std::ofstream lrWpanPcPlotFile ("cim-static-simple-lrwpan-pc.plt"); //packet count packet/slot Hwn statistic report (include ack packet)
-  Gnuplot lrWpanPcPlot = Gnuplot ();
-  lrWpanPcPlot.SetTitle("LR-WPAN Packet Count (packet/slot) vs Lr-Wpan slot length");
 
-  std::ofstream lrWpanCiPlotFile ("cim-static-simple-lrwpan-ci.plt"); //packet count packet/slot Hwn statistic report (include ack packet)
-  Gnuplot lrWpanCiPlot = Gnuplot ();
-  lrWpanCiPlot.SetTitle("LR-WPAN congestion indicator vs Lr-Wpan slot length");
+  std::ofstream wifiPcPlotFile ("cim-static-simple-wifi-pc.plt"); //packet count packet/slot Hwn statistic report (include ack packet)
+  Gnuplot wifiPcPlot = Gnuplot ();
+  wifiPcPlot.SetTitle("LR-WPAN Packet Count (packet/slot) vs Lr-Wpan slot length");
 
-  std::ofstream lrWpanDelayPlotFile ("cim-static-simple-lrwpan-delay.plt");
+  std::ofstream wifiCiPlotFile ("cim-static-simple-wifi-ci.plt"); //packet count packet/slot Hwn statistic report (include ack packet)
+  Gnuplot wifiCiPlot = Gnuplot ();
+  wifiCiPlot.SetTitle("LR-WPAN congestion indicator vs Lr-Wpan slot length");
+
+  std::ofstream lrWpanDelayPlotFile ("cim-static-simple-wifi-delay.plt");
   Gnuplot lrWpanDelayPlot = Gnuplot ();
   lrWpanDelayPlot.SetTitle("LR-WPAN packet delay vs Lr-Wpan slot length");
 
@@ -853,9 +867,9 @@ main (int argc, char *argv[])
   Gnuplot scheduleMgntOverheadPlot = Gnuplot ();
   scheduleMgntOverheadPlot.SetTitle("Management Overhead");
   
-  std::ofstream scheduleMgntLrwpanSlotUsageFile ("cim-static-simple-lrwpan-slot-usage.plt");
-  Gnuplot scheduleMgntLrwpanSlotUsagePlot = Gnuplot ();
-  scheduleMgntLrwpanSlotUsagePlot.SetTitle("Lr-wpan slot usage");
+  std::ofstream scheduleMgntWifiSlotUsageFile ("cim-static-simple-wifi-slot-usage.plt");
+  Gnuplot scheduleMgntWifiSlotUsagePlot = Gnuplot ();
+  scheduleMgntWifiSlotUsagePlot.SetTitle("Lr-wpan slot usage");
 
 //mode 7 only
   for(mode=1;mode <=7;mode ++){
@@ -863,31 +877,31 @@ main (int argc, char *argv[])
     switch (mode){
     case 1:
       isWithScheduling = true;
-      lrwpanNodeN = 1;
+      wifiPacketSize = 1472;
       break;
     case 2:
       isWithScheduling = true;
-      lrwpanNodeN = 2;
+      wifiPacketSize = 1200;
       break;
     case 3:
       isWithScheduling = true;
-      lrwpanNodeN = 3;
+      wifiPacketSize = 1000;
       break;
     case 4:
       isWithScheduling = true;
-      lrwpanNodeN = 4;
+      wifiPacketSize = 800;
       break;
     case 5:
       isWithScheduling = true;
-      lrwpanNodeN = 5;
+      wifiPacketSize = 600;
       break;
     case 6:
       isWithScheduling = true;
-      lrwpanNodeN = 6;
+      wifiPacketSize = 400;
       break;
     case 7:
       isWithScheduling = true;
-      lrwpanNodeN = 7;
+      wifiPacketSize = 200;
       break;
     default:
       NS_LOG_UNCOND("mode not supported");
@@ -895,41 +909,44 @@ main (int argc, char *argv[])
       break;
     }
 
-    Gnuplot2dDataset lrWpanPtrdataset ("Sender number:"+ std::to_string(lrwpanNodeN));
-    lrWpanPtrdataset.SetStyle(Gnuplot2dDataset::LINES_POINTS);
-    Gnuplot2dDataset lrWpanPcdataset ("Sender number:"+ std::to_string(lrwpanNodeN));
-    lrWpanPcdataset.SetStyle(Gnuplot2dDataset::LINES_POINTS);
-    Gnuplot2dDataset lrWpanCidataset ("Sender number:"+ std::to_string(lrwpanNodeN));
-    lrWpanCidataset.SetStyle(Gnuplot2dDataset::LINES_POINTS);
-    Gnuplot2dDataset lrWpanDelaydataset ("Sender number:"+ std::to_string(lrwpanNodeN));
+    Gnuplot2dDataset wifiThroughputdataset ("Packet Size:"+ std::to_string(wifiPacketSize));
+    wifiThroughputdataset.SetStyle(Gnuplot2dDataset::LINES_POINTS);
+    Gnuplot2dDataset wifiPcdataset ("Packet Size:"+ std::to_string(wifiPacketSize));
+    wifiPcdataset.SetStyle(Gnuplot2dDataset::LINES_POINTS);
+    Gnuplot2dDataset wifiCidataset ("Packet Size:"+ std::to_string(wifiPacketSize));
+    wifiCidataset.SetStyle(Gnuplot2dDataset::LINES_POINTS);
+    Gnuplot2dDataset lrWpanDelaydataset ("Packet Size:"+ std::to_string(wifiPacketSize));
     lrWpanDelaydataset.SetStyle(Gnuplot2dDataset::LINES_POINTS);
-    Gnuplot2dDataset scheduleMgntAverageDelaydataset ("Sender number:"+ std::to_string(lrwpanNodeN));
+    Gnuplot2dDataset scheduleMgntAverageDelaydataset ("Packet Size:"+ std::to_string(wifiPacketSize));
     scheduleMgntAverageDelaydataset.SetStyle(Gnuplot2dDataset::LINES_POINTS);
-    Gnuplot2dDataset scheduleMgntOverheaddataset ("Sender number:"+ std::to_string(lrwpanNodeN));
+    Gnuplot2dDataset scheduleMgntOverheaddataset ("Packet Size:"+ std::to_string(wifiPacketSize));
     scheduleMgntOverheaddataset.SetStyle(Gnuplot2dDataset::LINES_POINTS);
-    Gnuplot2dDataset scheduleMgntLrwpanSlotUsagedataset ("Sender number:"+ std::to_string(lrwpanNodeN));
-    scheduleMgntLrwpanSlotUsagedataset.SetStyle(Gnuplot2dDataset::LINES_POINTS);
+    Gnuplot2dDataset scheduleMgntWifiSlotUsagedataset ("Packet Size:"+ std::to_string(wifiPacketSize));
+    scheduleMgntWifiSlotUsagedataset.SetStyle(Gnuplot2dDataset::LINES_POINTS);
 
-    Time lrwpanSlot = MilliSeconds(1);      // ms
-    Time lrwpanSlotMax = MilliSeconds(31);  // ms
-    Time lrwpanSlotStep = MilliSeconds(4) ; // ms
     
+
+    Time wifiSlot = MilliSeconds(5);
+    Time wifiSlotMax = MilliSeconds(250);  // ms
+    Time wifiSlotStep = MilliSeconds(10) ; // ms
 
     simParams << "round:" << mode << std::endl;
     simParams << "Simulation parameters:" << std::endl;
     simParams << "isWithScheduling: " << isWithScheduling << std::endl;
     simParams << "lrwpanPayloadSize: " << lrwpanPayloadSize << std::endl;
+    simParams << "WifiUdpPacketSize: " << wifiPacketSize << std::endl;
     simParams << "sender number: " << lrwpanNodeN << std::endl;
     if(isWithScheduling){
       simParams << "WiFi slot: " << wifiSlot.GetSeconds()*1e3 << " ms" << std::endl;
     }
     simParams << "simulationTimePerRound: " << simulationTimePerRound.GetSeconds() << "s" << std::endl<<std::endl;
 
-    for(; lrwpanSlot <= lrwpanSlotMax; lrwpanSlot += lrwpanSlotStep)
+    for(; wifiSlot <= wifiSlotMax; wifiSlot += wifiSlotStep)
     {
 
       xiao::Helper xiao_helper_lrwpan[lrwpanNodeN];
       xiao::Helper &xiao_helper = xiao_helper_lrwpan[0];
+      xiao_helper.GenerateWiFiTraffic_setPacketSize(wifiPacketSize);
       xiao_helper.HwnStaticScheduleSetLrwpanslot(lrwpanSlot);
       xiao_helper.HwnStaticScheduleSetWifiSlot(wifiSlot);
       xiao_helper.LrwpanUnicast_setPayloadSize(lrwpanPayloadSize);
@@ -1071,7 +1088,7 @@ main (int argc, char *argv[])
 
 
       Simulator::Stop (simulationTimePerRound);
-      xiao_helper.PlaceSpectrum(channel,Vector(5,5,0),Seconds(0.1),Seconds(3),MicroSeconds(1000));
+      //xiao_helper.PlaceSpectrum(channel,Vector(5,5,0),Seconds(0.1),Seconds(3),MicroSeconds(1000));
       //xiao_helper.ConfigStorShow();
       //xiao_helper.makeAnim();
       Simulator::Run ();
@@ -1082,8 +1099,8 @@ main (int argc, char *argv[])
       NS_LOG_INFO("LR-WPAN Delay:" << xiao_helper.GetLrWpanDelay().GetSeconds()*1e3 <<" ms");
       NS_LOG_INFO("WiFi ThrouthPut:" << xiao_helper.GetUdpThroughtput() << " Mbps");
       NS_LOG_INFO("WiFi Delay:"<< xiao_helper.GetUdpDelay().GetSeconds()*1e3 <<" ms");
-      lrWpanPtrdataset.Add(lrwpanSlot.GetMilliSeconds(), xiao_helper.LrwpanUnicast_getPTR());
-      lrWpanDelaydataset.Add(lrwpanSlot.GetMilliSeconds(), xiao_helper.GetLrWpanDelay().GetSeconds()*1e3);
+      wifiThroughputdataset.Add(wifiSlot.GetMilliSeconds(), xiao_helper.GetUdpThroughtput());
+      lrWpanDelaydataset.Add(wifiSlot.GetMilliSeconds(), xiao_helper.GetLrWpanDelay().GetSeconds()*1e3);
       if(isWithScheduling){
         NS_LOG_INFO("LR-WPAN PC:" << xiao_helper.HwnGetPcLrwpan() << " packet/slot");
         NS_LOG_INFO("LR-WPAN CI:" << xiao_helper.HwnGetCiLrwpan()*100 << " %");
@@ -1092,24 +1109,24 @@ main (int argc, char *argv[])
         NS_LOG_INFO("Lrwpan slot usage " << xiao_helper.HwnGetSlotUsageLrwpan()*1e2 <<"%");
         NS_LOG_INFO("WiFi slot usage " << xiao_helper.HwnGetSlotUsageWifi()*1e2 <<"%");
         
-        lrWpanPcdataset.Add(lrwpanSlot.GetMilliSeconds(), xiao_helper.HwnGetPcLrwpan());
-        lrWpanCidataset.Add(lrwpanSlot.GetMilliSeconds(), xiao_helper.HwnGetCiLrwpan());
-        scheduleMgntAverageDelaydataset.Add(lrwpanSlot.GetMilliSeconds(), xiao_helper.HwnGetManagementDelay().GetSeconds()*1e3);
-        scheduleMgntOverheaddataset.Add(lrwpanSlot.GetMilliSeconds(), xiao_helper.HwnGetManagementOverhead());
-        scheduleMgntLrwpanSlotUsagedataset.Add(lrwpanSlot.GetMilliSeconds(), xiao_helper.HwnGetSlotUsageLrwpan());
+        wifiPcdataset.Add(wifiSlot.GetMilliSeconds(), xiao_helper.HwnGetPcWifi());
+        wifiCidataset.Add(wifiSlot.GetMilliSeconds(), xiao_helper.HwnGetCiWifi());
+        scheduleMgntAverageDelaydataset.Add(wifiSlot.GetMilliSeconds(), xiao_helper.HwnGetManagementDelay().GetSeconds()*1e3);
+        scheduleMgntOverheaddataset.Add(wifiSlot.GetMilliSeconds(), xiao_helper.HwnGetManagementOverhead());
+        scheduleMgntWifiSlotUsagedataset.Add(wifiSlot.GetMilliSeconds(), xiao_helper.HwnGetSlotUsageWifi());
 
       }
       Simulator::Destroy ();
     }
     
-    lrWpanPtrPlot.AddDataset(lrWpanPtrdataset);
+    wifiThroughputPlot.AddDataset(wifiThroughputdataset);
     lrWpanDelayPlot.AddDataset(lrWpanDelaydataset);
     if(isWithScheduling){
-      lrWpanPcPlot.AddDataset(lrWpanPcdataset);
-      lrWpanCiPlot.AddDataset(lrWpanCidataset);
+      wifiPcPlot.AddDataset(wifiPcdataset);
+      wifiCiPlot.AddDataset(wifiCidataset);
       scheduleMgntAverageDelayPlot.AddDataset(scheduleMgntAverageDelaydataset);
       scheduleMgntOverheadPlot.AddDataset(scheduleMgntOverheaddataset);
-      scheduleMgntLrwpanSlotUsagePlot.AddDataset(scheduleMgntLrwpanSlotUsagedataset);
+      scheduleMgntWifiSlotUsagePlot.AddDataset(scheduleMgntWifiSlotUsagedataset);
     }
   }
   
@@ -1123,51 +1140,53 @@ main (int argc, char *argv[])
   //set terminal wxt size 350,262 enhanced font 'Verdana,10' persist
   //lrWpanPlrPlot.SetTerminal ("wxt size 350,262 enhanced font 'Verdana,10' persist");
   
-  //lrWpanPlrSchdataset.SetStyle(Gnuplot2dDataset::LINES_POINTS);
-  lrWpanPtrPlot.SetLegend ("Lr-Wpan slot (ms)", "Packet Transmission Rate (packet/s)");
-  lrWpanPtrPlot.SetExtra  (
-"set xrange [0:32]\n\
-set grid\n\
-set key left\n\
-set for [i=1:7] style line 1 lw 1 ps 1\n\
-set style increment user");
-  lrWpanPtrPlot.GenerateOutput (lrWpanPtrPlotFile);
-  lrWpanPtrPlotFile.close ();
 
-  lrWpanPcPlot.SetLegend ("Lr-Wpan slot (ms)", "Packet Count (packet/slot)");
-  lrWpanPcPlot.SetExtra  (
-"set xrange [0:32]\n\
+  //wifiThroughputSchdataset.SetStyle(Gnuplot2dDataset::LINES_POINTS);
+  wifiThroughputPlot.SetLegend ("WiFi slot (ms)", "Real WiFi Speed (Mbps)");
+  wifiThroughputPlot.SetExtra  ("\
+set xrange [0:250]\n\
+set grid\n\
+set style line 1 lw 2 ps 2\n\
+set style line 2 lw 2 ps 2\n\
+set style increment user");
+  wifiThroughputPlot.GenerateOutput (wifiThroughputPlotFile);
+  wifiThroughputPlotFile.close ();
+
+
+  wifiPcPlot.SetLegend ("WiFi slot (ms)", "Packet Count (packet/slot)");
+  wifiPcPlot.SetExtra  (
+"set xrange [0:250]\n\
 set grid\n\
 set key left\n\
 set for [i=1:7] style line 1 lw 1 ps 1\n\
 set style increment user");
-  lrWpanPcPlot.GenerateOutput (lrWpanPcPlotFile);
-  lrWpanPcPlotFile.close ();
+  wifiPcPlot.GenerateOutput (wifiPcPlotFile);
+  wifiPcPlotFile.close ();
   
   
-  lrWpanCiPlot.SetLegend ("Lr-Wpan slot (ms)", "Congestion indicator");
-  lrWpanCiPlot.SetExtra  (
-"set xrange [0:32]\n\
+  wifiCiPlot.SetLegend ("WiFi slot (ms)", "Congestion indicator");
+  wifiCiPlot.SetExtra  (
+"set xrange [0:250]\n\
 set grid\n\
 set key left\n\
 set for [i=1:7] style line 1 lw 1 ps 1\n\
 set style increment user");
-  lrWpanCiPlot.GenerateOutput (lrWpanCiPlotFile);
-  lrWpanCiPlotFile.close ();
+  wifiCiPlot.GenerateOutput (wifiCiPlotFile);
+  wifiCiPlotFile.close ();
 
   //lrWpanDelaySchdataset.SetStyle(Gnuplot2dDataset::LINES_POINTS);
-  lrWpanDelayPlot.SetLegend ("Lr-Wpan slot (ms)", "LR-WPAN Packet Delay (ms)");
+  lrWpanDelayPlot.SetLegend ("WiFi slot (ms)", "LR-WPAN Packet Delay (ms)");
   lrWpanDelayPlot.SetExtra  ("\
-set xrange [0:32]\n\
+set xrange [0:250]\n\
 set grid\n\
 set for [i=1:7] style line 1 lw 1 ps 1\n\
 set style increment user");
   lrWpanDelayPlot.GenerateOutput (lrWpanDelayPlotFile);
   lrWpanDelayPlotFile.close ();
 
-  scheduleMgntAverageDelayPlot.SetLegend ("Lr-Wpan slot (ms)", "Schedule Management Average Delay (ms)");
+  scheduleMgntAverageDelayPlot.SetLegend ("WiFi slot (ms)", "Schedule Management Average Delay (ms)");
   scheduleMgntAverageDelayPlot.SetExtra  ("\
-set xrange [0:32]\n\
+set xrange [0:250]\n\
 set grid\n\
 set for [i=1:7] style line 1 lw 1 ps 1\n\
 set style increment user");
@@ -1175,9 +1194,9 @@ set style increment user");
   scheduleMgntAverageDelayFile.close ();
 
 
-  scheduleMgntOverheadPlot.SetLegend ("Lr-Wpan slot (ms)", "Schedule Overhead");
+  scheduleMgntOverheadPlot.SetLegend ("WiFi slot (ms)", "Schedule Overhead");
   scheduleMgntOverheadPlot.SetExtra  (
-"set xrange [0:32]\n\
+"set xrange [0:250]\n\
 set grid\n\
 set for [i=1:7] style line 1 lw 1 ps 1\n\
 set style increment user");
@@ -1185,15 +1204,15 @@ set style increment user");
   scheduleMgntOverheadFile.close ();
 
 
-  scheduleMgntLrwpanSlotUsagePlot.SetLegend ("Lr-Wpan slot (ms)", "Lr-wpan Slot usage");
-  scheduleMgntLrwpanSlotUsagePlot.SetExtra  (
-"set xrange [0:32]\n\
+  scheduleMgntWifiSlotUsagePlot.SetLegend ("WiFi slot (ms)", "Lr-wpan Slot usage");
+  scheduleMgntWifiSlotUsagePlot.SetExtra  (
+"set xrange [0:250]\n\
 set grid\n\
 set key right bottom\n\
 set for [i=1:7] style line 1 lw 1 ps 1\n\
 set style increment user");
-  scheduleMgntLrwpanSlotUsagePlot.GenerateOutput (scheduleMgntLrwpanSlotUsageFile);
-  scheduleMgntLrwpanSlotUsageFile.close ();
+  scheduleMgntWifiSlotUsagePlot.GenerateOutput (scheduleMgntWifiSlotUsageFile);
+  scheduleMgntWifiSlotUsageFile.close ();
 
 }
 
