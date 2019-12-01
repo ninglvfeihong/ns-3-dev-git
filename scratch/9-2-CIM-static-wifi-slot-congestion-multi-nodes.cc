@@ -451,9 +451,9 @@ class Helper{
   Time m_GenerateWiFiTrafficUdpStartTime;
   Time m_GenerateWiFiTrafficUdpEndTime;
   Time m_GenerateWiFiTrafficUdpRxCbReportTime;
-  uint64_t m_GenerateWiFiTrafficUdpRxCbBytes = 0;
-  uint64_t m_GenerateWiFiTrafficUdpRxCbByPacket=0;
-  Time m_m_GenerateWiFiTrafficUdp_allDelay = Seconds(0);
+  static uint64_t m_GenerateWiFiTrafficUdpRxCbBytes;
+  static uint64_t m_GenerateWiFiTrafficUdpRxCbByPacket;
+  static Time m_m_GenerateWiFiTrafficUdp_allDelay;
   void _GenerateWiFiTrafficUdpRxCb(Ptr<const Packet> p){
     if(Now() > m_GenerateWiFiTrafficUdpEndTime) return;
     m_GenerateWiFiTrafficUdpRxCbBytes+=p->GetSize();
@@ -479,7 +479,7 @@ class Helper{
       return m_m_GenerateWiFiTrafficUdp_allDelay/m_GenerateWiFiTrafficUdpRxCbByPacket;
     }
   }
-  void GenerateWiFiTrafficUdp(Ptr<Node> node1, ns3::Ipv4Address addr1, Ptr<Node> node2,ns3::Ipv4Address addr2, double speedIn_mbps, Time start, Time stop){
+  void GenerateWiFiTrafficUdp(uint16_t port,Ptr<Node> node1, ns3::Ipv4Address addr1, Ptr<Node> node2,ns3::Ipv4Address addr2, double speedIn_mbps, Time start, Time stop){
     if(speedIn_mbps==0){
       //not wifi generate needed 
       return;
@@ -490,7 +490,7 @@ class Helper{
 
     uint64_t pcketSize = m_GenerateWiFiTraffic_packetSize;
     double interval = (pcketSize*8*2/*send and echo data*/)/(1e6*speedIn_mbps);
-    UdpServerHelper udpServer;
+    UdpServerHelper udpServer(port);
     NodeContainer nodes;
     nodes.Add(node1);
     nodes.Add(node2);
@@ -499,7 +499,7 @@ class Helper{
     udpServerApps.Stop (Seconds(0));
 
 
-    UdpClientHelper echoClient (addr1);
+    UdpClientHelper echoClient (addr1,port);
     echoClient.SetAttribute ("MaxPackets", UintegerValue (UINT32_MAX));
     echoClient.SetAttribute ("Interval", TimeValue (Seconds (interval)));
     echoClient.SetAttribute ("PacketSize", UintegerValue (pcketSize));
@@ -515,6 +515,11 @@ class Helper{
     m_GenerateWiFiTrafficUdpStartTime= start;
     m_GenerateWiFiTrafficUdpEndTime = stop;
     m_GenerateWiFiTrafficUdpRxCbReportTime = start;
+    
+  
+    m_GenerateWiFiTrafficUdpRxCbBytes = 0;
+    m_GenerateWiFiTrafficUdpRxCbByPacket=0;
+    m_m_GenerateWiFiTrafficUdp_allDelay = Seconds(0);
   }
 
 
@@ -752,6 +757,10 @@ class Helper{
 
   uint64_t Helper::m_LrWpanSendScheduleUnicast_counter_ok = 0;
   uint64_t Helper::m_LrWpanSendScheduleUnicast_counter_fail = 0;
+  
+  uint64_t Helper::m_GenerateWiFiTrafficUdpRxCbBytes = 0;
+  uint64_t Helper::m_GenerateWiFiTrafficUdpRxCbByPacket=0;
+  Time Helper::m_m_GenerateWiFiTrafficUdp_allDelay = Seconds(0);
 
 
 void
@@ -823,13 +832,15 @@ main (int argc, char *argv[])
 
   int mode  = 7;
   int lrwpanNodeN = 1; //number of lrwpan sending nodes
+  int wifiAdditionalStaN = 0; //number of additional station nodes
   int lrwpanPayloadSize = 20;
   CommandLine cmd;
   cmd.Usage ("run simulation in different mode");
   cmd.AddValue ("mode",  "an int argument", mode);
   cmd.Parse (argc, argv);
   
-  uint32_t wifiPacketSize = 1472;
+  //uint32_t wifiPacketSize = 1472;
+  uint32_t wifiPacketSize = 400;
   bool isWithScheduling;
 
   Time lrwpanSlot = MilliSeconds(30);      // ms
@@ -840,7 +851,7 @@ main (int argc, char *argv[])
   double desiredWiFiSpeed =32; 
   // double desiredWiFiSpeedMax = 32; //Mbps
   // double desiredWiFiSpeedStep = 100; //Mbps
-  Time simulationTimePerRound = Seconds(8);
+  Time simulationTimePerRound = Seconds(5);
 
   std::ofstream simParams("SimParams.info");
 
@@ -873,37 +884,37 @@ main (int argc, char *argv[])
   Gnuplot scheduleMgntWifiSlotUsagePlot = Gnuplot ();
   scheduleMgntWifiSlotUsagePlot.SetTitle("Lr-wpan slot usage");
 
-//mode 7 only
+
   for(mode=1;mode <=7;mode ++){
 
     switch (mode){
     case 1:
       isWithScheduling = true;
-      wifiPacketSize = 1472;
+      wifiAdditionalStaN = 0;
       break;
     case 2:
       isWithScheduling = true;
-      wifiPacketSize = 1200;
+      wifiAdditionalStaN = 1;
       break;
     case 3:
       isWithScheduling = true;
-      wifiPacketSize = 1000;
+      wifiAdditionalStaN = 2;
       break;
     case 4:
       isWithScheduling = true;
-      wifiPacketSize = 800;
+      wifiAdditionalStaN = 3;
       break;
     case 5:
       isWithScheduling = true;
-      wifiPacketSize = 600;
+      wifiAdditionalStaN = 4;
       break;
     case 6:
       isWithScheduling = true;
-      wifiPacketSize = 400;
+      wifiAdditionalStaN = 5;
       break;
     case 7:
       isWithScheduling = true;
-      wifiPacketSize = 200;
+      wifiAdditionalStaN = 6;
       break;
     default:
       NS_LOG_UNCOND("mode not supported");
@@ -911,33 +922,34 @@ main (int argc, char *argv[])
       break;
     }
 
-    Gnuplot2dDataset wifiThroughputdataset ("Packet Size:"+ std::to_string(wifiPacketSize));
+    Gnuplot2dDataset wifiThroughputdataset ("Station Number:"+ std::to_string(wifiAdditionalStaN+1));
     wifiThroughputdataset.SetStyle(Gnuplot2dDataset::LINES_POINTS);
-    Gnuplot2dDataset wifiPcdataset ("Packet Size:"+ std::to_string(wifiPacketSize));
+    Gnuplot2dDataset wifiPcdataset ("Station Number:"+ std::to_string(wifiAdditionalStaN+1));
     wifiPcdataset.SetStyle(Gnuplot2dDataset::LINES_POINTS);
-    Gnuplot2dDataset wifiCidataset ("Packet Size:"+ std::to_string(wifiPacketSize));
+    Gnuplot2dDataset wifiCidataset ("Station Number:"+ std::to_string(wifiAdditionalStaN+1));
     wifiCidataset.SetStyle(Gnuplot2dDataset::LINES_POINTS);
-    Gnuplot2dDataset lrWpanDelaydataset ("Packet Size:"+ std::to_string(wifiPacketSize));
+    Gnuplot2dDataset lrWpanDelaydataset ("Station Number:"+ std::to_string(wifiAdditionalStaN+1));
     lrWpanDelaydataset.SetStyle(Gnuplot2dDataset::LINES_POINTS);
-    Gnuplot2dDataset scheduleMgntAverageDelaydataset ("Packet Size:"+ std::to_string(wifiPacketSize));
+    Gnuplot2dDataset scheduleMgntAverageDelaydataset ("Station Number:"+ std::to_string(wifiAdditionalStaN+1));
     scheduleMgntAverageDelaydataset.SetStyle(Gnuplot2dDataset::LINES_POINTS);
-    Gnuplot2dDataset scheduleMgntOverheaddataset ("Packet Size:"+ std::to_string(wifiPacketSize));
+    Gnuplot2dDataset scheduleMgntOverheaddataset ("Station Number:"+ std::to_string(wifiAdditionalStaN+1));
     scheduleMgntOverheaddataset.SetStyle(Gnuplot2dDataset::LINES_POINTS);
-    Gnuplot2dDataset scheduleMgntWifiSlotUsagedataset ("Packet Size:"+ std::to_string(wifiPacketSize));
+    Gnuplot2dDataset scheduleMgntWifiSlotUsagedataset ("Station Number:"+ std::to_string(wifiAdditionalStaN+1));
     scheduleMgntWifiSlotUsagedataset.SetStyle(Gnuplot2dDataset::LINES_POINTS);
 
     
 
     Time wifiSlot = MilliSeconds(5);
     Time wifiSlotMax = MilliSeconds(250);  // ms
-    Time wifiSlotStep = MilliSeconds(25) ; // ms
+    Time wifiSlotStep = MilliSeconds(45) ; // ms
 
     simParams << "round:" << mode << std::endl;
     simParams << "Simulation parameters:" << std::endl;
     simParams << "isWithScheduling: " << isWithScheduling << std::endl;
     simParams << "lrwpanPayloadSize: " << lrwpanPayloadSize << std::endl;
     simParams << "WifiUdpPacketSize: " << wifiPacketSize << std::endl;
-    simParams << "sender number: " << lrwpanNodeN << std::endl;
+    simParams << "lr-wpan sender number: " << lrwpanNodeN << std::endl;
+    simParams << "wifi station number: " << wifiAdditionalStaN +1 << std::endl;
     if(isWithScheduling){
       simParams << "WiFi slot: " << wifiSlot.GetSeconds()*1e3 << " ms" << std::endl;
     }
@@ -947,6 +959,7 @@ main (int argc, char *argv[])
     {
 
       xiao::Helper xiao_helper_lrwpan[lrwpanNodeN];
+      xiao::Helper xiao_helper_wifi[wifiAdditionalStaN];
       xiao::Helper &xiao_helper = xiao_helper_lrwpan[0];
       xiao_helper.GenerateWiFiTraffic_setPacketSize(wifiPacketSize);
       xiao_helper.HwnStaticScheduleSetLrwpanslot(lrwpanSlot);
@@ -960,6 +973,9 @@ main (int argc, char *argv[])
       NodeContainer lrwpanNodes;
       lrwpanNodes.Create(lrwpanNodeN);
       nodes.Add(lrwpanNodes);
+      NodeContainer wifiAddtionalStas;
+      wifiAddtionalStas.Create(wifiAdditionalStaN);
+      nodes.Add(wifiAddtionalStas);
 
       LrWpanHelper lrWpanHelper(true);
       /*if (verbose)
@@ -970,10 +986,14 @@ main (int argc, char *argv[])
       //install Mobility to nodes;
       Ptr<Node> gateway = nodes.Get(0);
       Ptr<Node> wifiStation = nodes.Get(1);
+      NodeContainer wifiStations;
+      wifiStations.Add(wifiStation);
+      wifiStations.Add(wifiAddtionalStas);
       ns3::Ptr<ListPositionAllocator> locationAllocator = ns3::CreateObject<ListPositionAllocator>();
       locationAllocator->Add(ns3::Vector(0,5,0));     //gateway
       locationAllocator->Add(ns3::Vector(10,10,0));  //wifi station
       for(int i=0;i<lrwpanNodeN;i++)locationAllocator->Add(ns3::Vector(10,0,0));  //lrwpanNodes
+      for(int i=0;i<wifiAdditionalStaN;i++)locationAllocator->Add(ns3::Vector(10,0,0));  //lrwpanNodes
 
       MobilityHelper mobility;
       mobility.SetPositionAllocator(locationAllocator);
@@ -1017,7 +1037,7 @@ main (int argc, char *argv[])
       /////////////////////////////////
       NodeContainer wifiNodes;
       wifiNodes.Add(gateway);
-      wifiNodes.Add(wifiStation);
+      wifiNodes.Add(wifiStations);
 
       ns3::SpectrumWifiPhyHelper wifiPhy = ns3::SpectrumWifiPhyHelper::Default();
       wifiPhy.SetChannel(channel);
@@ -1046,7 +1066,7 @@ main (int argc, char *argv[])
       mac.SetType ("ns3::StaWifiMac",
                   "Ssid", SsidValue (ssid),
                   "ActiveProbing", BooleanValue (false));
-      NetDeviceContainer staDevices = wifi.Install (wifiPhy, mac, wifiStation);
+      NetDeviceContainer staDevices = wifi.Install (wifiPhy, mac, wifiStations);
       //config ap node
       mac.SetType ("ns3::ApWifiMac",
                   "Ssid", SsidValue (ssid));
@@ -1068,8 +1088,15 @@ main (int argc, char *argv[])
       //xiao_helper.GenerateWiFiTraffic(gateway,wifiApIpv4Interfaces.GetAddress (0),9,wifiStation,30,Seconds(1),Seconds(6)); //send packet allow ARP build, before real experiment
       //xiao_helper.GenerateWiFiTraffic(wifiStation,wifiStaIpv4Interfaces.GetAddress (0),9,gateway,30,Seconds(1),Seconds(6));
 
-      xiao_helper.GenerateWiFiTrafficUdp(gateway,wifiApIpv4Interfaces.GetAddress (0),wifiStation,wifiStaIpv4Interfaces.GetAddress (0),
+      xiao_helper.GenerateWiFiTrafficUdp(49,gateway,wifiApIpv4Interfaces.GetAddress (0),wifiStation,wifiStaIpv4Interfaces.GetAddress (0),
                                           desiredWiFiSpeed,Seconds(1),simulationTimePerRound);
+      //additional stations
+      for(int i=0; i< wifiAdditionalStaN;i++){
+        xiao_helper_wifi[i].GenerateWiFiTraffic(gateway,wifiApIpv4Interfaces.GetAddress (0),10+i,wifiStations.Get(i+1),1,Seconds(0.2),Seconds(0.3));
+        xiao_helper_wifi[i].GenerateWiFiTrafficUdp(50+i,gateway,wifiApIpv4Interfaces.GetAddress (0),wifiStations.Get(i+1),wifiStaIpv4Interfaces.GetAddress (i+1),
+                                          desiredWiFiSpeed,Seconds(1),simulationTimePerRound);
+      }
+
       //stupid way scheduling lr-wpan packet seding
       //xiao_helper.LrWpanSendScheduleBroadcast(lrwpanNode, Seconds(1.12),simulationTimePerRound-Seconds(0.5),MilliSeconds(300));
       for (int i =0;i<lrwpanNodeN;i++)
@@ -1106,6 +1133,8 @@ main (int argc, char *argv[])
       if(isWithScheduling){
         NS_LOG_INFO("LR-WPAN PC:" << xiao_helper.HwnGetPcLrwpan() << " packet/slot");
         NS_LOG_INFO("LR-WPAN CI:" << xiao_helper.HwnGetCiLrwpan()*100 << " %");
+        NS_LOG_INFO("WiFi PC:" << xiao_helper.HwnGetPcWifi() << " packet/slot");
+        NS_LOG_INFO("WiFi CI:" << xiao_helper.HwnGetCiWifi()*100 << " %");
         NS_LOG_INFO("Management Average Delay" << xiao_helper.HwnGetManagementDelay().GetSeconds()*1e3 <<" ms");
         NS_LOG_INFO("Management Overhead " << xiao_helper.HwnGetManagementOverhead()*1e2 <<"%");
         NS_LOG_INFO("Lrwpan slot usage " << xiao_helper.HwnGetSlotUsageLrwpan()*1e2 <<"%");
