@@ -1294,7 +1294,7 @@ Hwn::Hwn()
 m_apWiFiMac(0),
 m_currentScheduleItem(0),
 m_reportStatistic(Create<ScheduleReportStatistic>()),
-m_ctsWaitMax(MilliSeconds(20)),
+m_ctsWaitMax(MilliSeconds(1000)),
 m_ctsDurationMax(MicroSeconds(0x7fff)),
 m_maxLrwpanPeriod(MilliSeconds(0)),
 m_LrwpanExcessSP(MilliSeconds(10)),
