@@ -727,9 +727,11 @@ class Helper{
   double HwnGetCiWifi(void){ //congetion indicator
     //Wifi SIFT is the minimum space require between different packet.
     //slot time: 20 us
-    //PIFS: SIFT+ slotTime
+    //slot time: 20 or 9
+    //PIFS: SIFT+ slotTime = 30 or 19
+    //DIFS: SIFT + 2*slotTime = 50 or 28
     // thus the congestion indicator can be defined as.
-    // ((SIFT*0.5 + (2*slotTime+PIFT)*0.5)*wifiPacketCount + wifiCBT)/wifiPeriodSum
+    // ((SIFT*0.5 + (2*slotTime+DIFS)*0.5)*wifiPacketCount + wifiCBT)/wifiPeriodSum
     // SIFT for 802.11 b/g/n is 10us 
     return (MicroSeconds(40)*hwnStatistic.wifiPacketCount + hwnStatistic.wifiCBTSum).GetSeconds()/hwnStatistic.wifiPeriodSum.GetSeconds() ;
   }
@@ -1146,8 +1148,7 @@ main (int argc, char *argv[])
   wifiThroughputPlot.SetExtra  ("\
 set xrange [0:250]\n\
 set grid\n\
-set style line 1 lw 2 ps 2\n\
-set style line 2 lw 2 ps 2\n\
+set for [i=1:7] style line 1 lw 1 ps 1\n\
 set style increment user");
   wifiThroughputPlot.GenerateOutput (wifiThroughputPlotFile);
   wifiThroughputPlotFile.close ();

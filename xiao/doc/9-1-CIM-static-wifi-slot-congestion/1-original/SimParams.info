@@ -1,0 +1,63 @@
+round:1
+Simulation parameters:
+isWithScheduling: 1
+lrwpanPayloadSize: 20
+WifiUdpPacketSize: 1472
+sender number: 1
+WiFi slot: 5 ms
+simulationTimePerRound: 40s
+
+round:2
+Simulation parameters:
+isWithScheduling: 1
+lrwpanPayloadSize: 20
+WifiUdpPacketSize: 1200
+sender number: 1
+WiFi slot: 5 ms
+simulationTimePerRound: 40s
+
+round:3
+Simulation parameters:
+isWithScheduling: 1
+lrwpanPayloadSize: 20
+WifiUdpPacketSize: 1000
+sender number: 1
+WiFi slot: 5 ms
+simulationTimePerRound: 40s
+
+round:4
+Simulation parameters:
+isWithScheduling: 1
+lrwpanPayloadSize: 20
+WifiUdpPacketSize: 800
+sender number: 1
+WiFi slot: 5 ms
+simulationTimePerRound: 40s
+
+round:5
+Simulation parameters:
+isWithScheduling: 1
+lrwpanPayloadSize: 20
+WifiUdpPacketSize: 600
+sender number: 1
+WiFi slot: 5 ms
+simulationTimePerRound: 40s
+
+round:6
+Simulation parameters:
+isWithScheduling: 1
+lrwpanPayloadSize: 20
+WifiUdpPacketSize: 400
+sender number: 1
+WiFi slot: 5 ms
+simulationTimePerRound: 40s
+
+round:7
+Simulation parameters:
+isWithScheduling: 1
+lrwpanPayloadSize: 20
+WifiUdpPacketSize: 200
+sender number: 1
+WiFi slot: 5 ms
+simulationTimePerRound: 40s
+
