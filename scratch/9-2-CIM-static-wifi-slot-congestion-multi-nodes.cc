@@ -857,20 +857,20 @@ main (int argc, char *argv[])
 
   std::ofstream wifiThroughputPlotFile ("cim-static-simple-wifi-throughput.plt");
   Gnuplot wifiThroughputPlot = Gnuplot ();
-  wifiThroughputPlot.SetTitle("WiFi real speed vs desired WiFi speed");
+  wifiThroughputPlot.SetTitle("WiFi real speed vs WiFi slot length");
 
 
   std::ofstream wifiPcPlotFile ("cim-static-simple-wifi-pc.plt"); //packet count packet/slot Hwn statistic report (include ack packet)
   Gnuplot wifiPcPlot = Gnuplot ();
-  wifiPcPlot.SetTitle("LR-WPAN Packet Count (packet/slot) vs Lr-Wpan slot length");
+  wifiPcPlot.SetTitle("WiFi Packet Count (packet/slot) vs WiFi slot length");
 
   std::ofstream wifiCiPlotFile ("cim-static-simple-wifi-ci.plt"); //packet count packet/slot Hwn statistic report (include ack packet)
   Gnuplot wifiCiPlot = Gnuplot ();
-  wifiCiPlot.SetTitle("LR-WPAN congestion indicator vs Lr-Wpan slot length");
+  wifiCiPlot.SetTitle("WiFi congestion indicator vs WiFi slot length");
 
-  std::ofstream lrWpanDelayPlotFile ("cim-static-simple-wifi-delay.plt");
+  std::ofstream lrWpanDelayPlotFile ("cim-static-simple-lrwpan-delay.plt");
   Gnuplot lrWpanDelayPlot = Gnuplot ();
-  lrWpanDelayPlot.SetTitle("LR-WPAN packet delay vs Lr-Wpan slot length");
+  lrWpanDelayPlot.SetTitle("LR-WPAN packet delay vs WiFi slot length");
 
   std::ofstream scheduleMgntAverageDelayFile ("cim-static-simple-managment-average-delay.plt");
   Gnuplot scheduleMgntAverageDelayPlot = Gnuplot ();
@@ -882,7 +882,7 @@ main (int argc, char *argv[])
   
   std::ofstream scheduleMgntWifiSlotUsageFile ("cim-static-simple-wifi-slot-usage.plt");
   Gnuplot scheduleMgntWifiSlotUsagePlot = Gnuplot ();
-  scheduleMgntWifiSlotUsagePlot.SetTitle("Lr-wpan slot usage");
+  scheduleMgntWifiSlotUsagePlot.SetTitle("WiFi slot usage");
 
 
   for(mode=1;mode <=7;mode ++){
@@ -1237,7 +1237,7 @@ set style increment user");
   scheduleMgntOverheadFile.close ();
 
 
-  scheduleMgntWifiSlotUsagePlot.SetLegend ("WiFi slot (ms)", "Lr-wpan Slot usage");
+  scheduleMgntWifiSlotUsagePlot.SetLegend ("WiFi slot (ms)", "WiFi Slot usage");
   scheduleMgntWifiSlotUsagePlot.SetExtra  (
 "set xrange [0:250]\n\
 set grid\n\
