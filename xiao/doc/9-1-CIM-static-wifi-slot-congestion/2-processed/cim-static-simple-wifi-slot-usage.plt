@@ -1,4 +1,4 @@
-set title "Lr-wpan slot usage"
+set title "WiFi slot usage"
 set xlabel "WiFi slot (ms)"
 set ylabel "Lr-wpan Slot usage"
 set xrange [0:250]

@@ -1,4 +1,4 @@
-set title "LR-WPAN packet delay vs Lr-Wpan slot length"
+set title "LR-WPAN packet delay vs WiFi slot length"
 set xlabel "WiFi slot (ms)"
 set ylabel "LR-WPAN Packet Delay (ms)"
 set xrange [0:250]

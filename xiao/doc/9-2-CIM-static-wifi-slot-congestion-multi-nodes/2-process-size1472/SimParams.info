@@ -1,0 +1,70 @@
+round:1
+Simulation parameters:
+isWithScheduling: 1
+lrwpanPayloadSize: 20
+WifiUdpPacketSize: 1472
+lr-wpan sender number: 1
+wifi station number: 1
+WiFi slot: 5 ms
+simulationTimePerRound: 40s
+
+round:2
+Simulation parameters:
+isWithScheduling: 1
+lrwpanPayloadSize: 20
+WifiUdpPacketSize: 1472
+lr-wpan sender number: 1
+wifi station number: 2
+WiFi slot: 5 ms
+simulationTimePerRound: 40s
+
+round:3
+Simulation parameters:
+isWithScheduling: 1
+lrwpanPayloadSize: 20
+WifiUdpPacketSize: 1472
+lr-wpan sender number: 1
+wifi station number: 3
+WiFi slot: 5 ms
+simulationTimePerRound: 40s
+
+round:4
+Simulation parameters:
+isWithScheduling: 1
+lrwpanPayloadSize: 20
+WifiUdpPacketSize: 1472
+lr-wpan sender number: 1
+wifi station number: 4
+WiFi slot: 5 ms
+simulationTimePerRound: 40s
+
+round:5
+Simulation parameters:
+isWithScheduling: 1
+lrwpanPayloadSize: 20
+WifiUdpPacketSize: 1472
+lr-wpan sender number: 1
+wifi station number: 5
+WiFi slot: 5 ms
+simulationTimePerRound: 40s
+
+round:6
+Simulation parameters:
+isWithScheduling: 1
+lrwpanPayloadSize: 20
+WifiUdpPacketSize: 1472
+lr-wpan sender number: 1
+wifi station number: 6
+WiFi slot: 5 ms
+simulationTimePerRound: 40s
+
+round:7
+Simulation parameters:
+isWithScheduling: 1
+lrwpanPayloadSize: 20
+WifiUdpPacketSize: 1472
+lr-wpan sender number: 1
+wifi station number: 7
+WiFi slot: 5 ms
+simulationTimePerRound: 40s
+

@@ -1,4 +1,4 @@
-set title "LR-WPAN Packet Count (packet/slot) vs Lr-Wpan slot length"
+set title "WiFi Packet Count (packet/slot) vs Lr-Wpan slot length"
 set xlabel "WiFi slot (ms)"
 set ylabel "Packet Count (packet/slot)"
 set xrange [0:250]

@@ -1,4 +1,4 @@
-set title "LR-WPAN congestion indicator vs Lr-Wpan slot length"
+set title "WiFi congestion indicator vs WiFi slot length"
 set xlabel "WiFi slot (ms)"
 set ylabel "Congestion indicator"
 set xrange [0:250]

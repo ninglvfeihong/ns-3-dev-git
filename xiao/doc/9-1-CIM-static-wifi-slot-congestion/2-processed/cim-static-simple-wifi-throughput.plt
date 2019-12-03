@@ -1,4 +1,4 @@
-set title "WiFi real speed vs desired WiFi speed"
+set title "WiFi real speed vs vs Lr-Wpan slot length"
 set xlabel "WiFi slot (ms)"
 set ylabel "Real WiFi Speed (Mbps)"
 set xrange [0:250]
