@@ -707,14 +707,20 @@ class Helper{
         //we choose 20
     //assume NormalPacket:ACK = 0.6:0.4 -> overall 60*0.6+20*0.4 = 44 symbols = 44*16 us = 704us
 
-    Time extraTime = hwnStatistic.lrwpanPacketCount * MicroSeconds(704);
+    // Time extraTime = hwnStatistic.lrwpanPacketCount * MicroSeconds(704);
+    Time extraTime = hwnStatistic.lrwpanPacketCount * MicroSeconds((4.5*20*16+22*16)/2);
     //suffix time
     //average packet length in time: T
     //we choose half of the length time waste
     // L / 2 us 
     Time suffixTime;
+    // Time packetLength = hwnStatistic.lrwpanCBTSum/hwnStatistic.lrwpanPacketCount *2;
+    // Time pcketOccupy = packetLength + extraTime;
+    // Time remain = NanoSeconds((hwnStatistic.lrwpanCBTSum / hwnStatistic.schedulingCount).GetNanoSeconds()%pcketOccupy.GetNanoSeconds());
+    // Time packetAndAck = packetLength + MicroSeconds(20*16);
+    //if(remian > packetAndAck)
     if(hwnStatistic.lrwpanPacketCount == 0) suffixTime = Seconds(0);
-    else suffixTime = hwnStatistic.schedulingCount * (hwnStatistic.lrwpanCBTSum/hwnStatistic.lrwpanPacketCount/2);
+    else suffixTime = hwnStatistic.schedulingCount * (hwnStatistic.lrwpanCBTSum/hwnStatistic.lrwpanPacketCount +MicroSeconds((4.5*20*16+32*16)/2));
     return (extraTime + suffixTime + hwnStatistic.lrwpanCBTSum).GetSeconds()/hwnStatistic.lrwpanPeriodSum.GetSeconds();
   }
   double HwnGetCiWifi(void){ //congetion indicator
@@ -819,7 +825,7 @@ main (int argc, char *argv[])
   double desiredWiFiSpeed =0; 
   // double desiredWiFiSpeedMax = 32; //Mbps
   // double desiredWiFiSpeedStep = 100; //Mbps
-  Time simulationTimePerRound = Seconds(300);
+  Time simulationTimePerRound = Seconds(20);
 
   std::ofstream simParams("SimParams.info");
 
