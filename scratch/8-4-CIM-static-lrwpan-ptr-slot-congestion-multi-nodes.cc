@@ -43,6 +43,7 @@
 #include "ns3/ap-wifi-mac.h"
 
 #include <memory>
+#include <map>
 using namespace ns3;
 
 
@@ -102,8 +103,12 @@ public:
     Time csmaCompensation;
     Time wifiCBT;         //!< wifi channel busy time, exclude HWN management frame
     Time lrwpanCBT;       //!< Lr-Wpan channel busy time, exclude HWN management frame
+    std::shared_ptr<std::map<ns3::Mac16Address,ns3::Time>> lrwpanCBTMap; //channel busy time map for each node
     uint64_t wifiPacketCount;  //wifi packet number
     uint64_t lrwpanPacketCount; //Lr-Wpan packet number
+    ScheduleReportParameters(){
+      lrwpanCBTMap = std::make_shared<std::map<ns3::Mac16Address,ns3::Time>>();
+    }
   };
   /**
    * Report statics
@@ -114,6 +119,7 @@ public:
     Time lrwpanCBT;       //!< Lr-Wpan channel busy time, exclude HWN management frame
     uint64_t wifiPacketCount;  //wifi packet number
     uint64_t lrwpanPacketCount; //Lr-Wpan packet number
+    std::map<ns3::Mac16Address,ns3::Time> lrwpanCBTMap; // channel busy time map for each node
   };
   /**
    * Register this type.
@@ -641,6 +647,7 @@ class Helper{
     Time lrwpanPeriodSum;
     Time wifiPeriodSum;
     Time lrwpanCBTSum;
+    std::map<ns3::Mac16Address,ns3::Time> lrwpanCBTSumMap;
     Time wifiCBTSum;
     uint64_t lrwpanPacketCount;
     uint64_t wifiPacketCount;
@@ -658,6 +665,7 @@ class Helper{
     hwnStatistic.wifiCBTSum = Seconds(0);
     hwnStatistic.lrwpanPacketCount = 0;
     hwnStatistic.wifiPacketCount = 0;
+    hwnStatistic.lrwpanCBTSumMap.clear();
     
   }
   void HwnStatisticReportCb(Ptr<Hwn::ScheduleReportParameters> param){
@@ -680,6 +688,19 @@ class Helper{
     hwnStatistic.wifiCBTSum += param->wifiCBT;
     hwnStatistic.lrwpanPacketCount += param->lrwpanPacketCount;
     hwnStatistic.wifiPacketCount += param->wifiPacketCount;
+
+    for (std::map<ns3::Mac16Address,ns3::Time>::iterator it = param->lrwpanCBTMap->begin();it!=param->lrwpanCBTMap->end();it++){
+      
+      Mac16Address addr = it->first;
+      std::map<ns3::Mac16Address,Time>::iterator itSum;
+      itSum = hwnStatistic.lrwpanCBTSumMap.find(addr);
+      if(itSum == hwnStatistic.lrwpanCBTSumMap.end()){
+        //not found
+        hwnStatistic.lrwpanCBTSumMap[addr] = it->second;
+      }else{
+        itSum->second += it->second;
+      }
+    }
   }
   Time HwnGetManagementDelay(void){
     return hwnStatistic.csmaDelaySum/hwnStatistic.schedulingCount;
@@ -699,7 +720,103 @@ class Helper{
   double HwnGetPcWifi(void){
     return hwnStatistic.wifiPacketCount*1.0 / hwnStatistic.schedulingCount;
   }
+
+  //calculate backoff Expectation
+  double calcEbw(std::vector<double> &sur){
+    double surSum = 0;
+    double surMax = -1;
+    for(std::vector<double>::iterator it = sur.begin();it != sur.end();it++){
+      surSum += *it;
+      if(*it>surMax) surMax = *it;
+    }
+    std::vector<double> pb;
+    for (size_t i =0;i<sur.size();i++){
+      pb.push_back(surSum - sur[i]);
+    }
+
+    std::vector<std::vector<double>> pbn;
+    for (size_t n =0;n<sur.size();n++){
+      double p = pb[n];
+      double denom = 1 + p + p*p + pow(p,3) + pow(p,4);
+      pbn.push_back(std::vector<double>({1/denom, p/denom, (denom-1-p)/denom}));
+    }
+    int RB_N = 32;
+    std::vector<std::vector<double>> PRB;
+    for (size_t n =0;n<sur.size();n++){
+      std::vector<double> bn = pbn[n];
+      std::vector<double> arr;
+      double p = bn[0]/8 + bn[1]/16 + bn[2]/32;
+      for (int i =0; i<8;i++) arr.push_back(p);
+      p = bn[1]/16 + bn[2]/32;
+      for (int i =8; i<16;i++) arr.push_back(p);
+      p = bn[2]/32;
+      for (int i =16; i<RB_N;i++) arr.push_back(p);
+      PRB.push_back(arr);
+    }
+
+    //CDF of backoff
+    std::vector<std::vector<double>> PRB_CDF;
+    for (size_t n =0;n<sur.size();n++){
+      std::vector<double> prb = PRB[n];
+      std::vector<double> arr;
+      arr.push_back(prb[0]);
+      for (int i = 0;i<RB_N-1;i++){
+        arr.push_back(arr[i]+prb[i+1]);
+      }
+      PRB_CDF.push_back(arr);
+    }
+    //white space backoff for one channel
+    std::vector<double> PWB;
+    double multi = 1;
+    for (size_t n =0;n<sur.size();n++){
+      //PR is paticipation ratio
+      double PR = sur[n]/surMax;
+      multi = multi * (( 1 - PRB_CDF[n][0]) * PR + 1 * (1-PR) );
+    }
+    PWB.push_back( 1 - multi);
+    for (int i =0;i<RB_N-1;i++){
+      double multi1 = 1;
+      double multi2 = 1;
+      for (size_t n =0;n<sur.size();n++){
+        //PR is paticipation ratio
+        double PR = sur[n]/surMax;
+        multi1 = multi1 * (( 1 - PRB_CDF[n][i]) * PR + 1 * (1-PR) );
+        multi2 = multi2 * (( 1 - PRB_CDF[n][i+1]) * PR + 1 * (1-PR) );
+      }
+      PWB.push_back(multi1- multi2);
+    }
+
+    double PWB_Exp =0;
+    for (int i=0;i<RB_N;i++){
+      PWB_Exp += i*PWB[i];
+    }
+    return PWB_Exp;
+    
+  }
   double HwnGetCiLrwpan(void){ //congetion indicator
+    // for (std::map<ns3::Mac16Address,ns3::Time>::iterator it = hwnStatistic.lrwpanCBTSumMap.begin();it!=hwnStatistic.lrwpanCBTSumMap.end();it++){
+      
+    //   // Mac16Address addr = it->first;
+      
+    //   NS_LOG_INFO(it->first << "::"<<it->second);
+    // }
+     //double tbw[] = {4.5, 4.5 , 3.68 , 3.02 , 2.58 , 2.28 , 2.06 , 1.89 , 1.76};
+  //  double tbw[] = {4.5, 4.5 , 4.68 , 4.02 , 3.58 , 3.28 , 3.06 , 2.89 , 2.76};
+    size_t N = hwnStatistic.lrwpanCBTSumMap.size();
+    std::vector<double> vec;
+    double vecSum =0;
+    double eta = hwnStatistic.lrwpanCBTSum.GetSeconds()/hwnStatistic.lrwpanPeriodSum.GetSeconds();
+    for ( std::map<Mac16Address,Time>::iterator it = hwnStatistic.lrwpanCBTSumMap.begin();it!=hwnStatistic.lrwpanCBTSumMap.end();it++){
+      double s = it->second.GetSeconds();
+      vecSum += s;
+      vec.push_back(s);
+    }
+    for (size_t i =0;i<vec.size();i++){
+      vec[i] = vec[i]/vecSum * eta;
+    }
+    double ebw = calcEbw(vec);
+    NS_LOG_INFO(".......ebw...:" << ebw); 
+
     //symbols
     //-- normal packet 
     //CCA (8) + turnaroundtime(12) + average backoff (20 *n) -- normal packet 
@@ -710,14 +827,17 @@ class Helper{
         //we choose 20
     //assume NormalPacket:ACK = 0.6:0.4 -> overall 60*0.6+20*0.4 = 44 symbols = 44*16 us = 704us
 
-    Time extraTime = hwnStatistic.lrwpanPacketCount * MicroSeconds(704);
+    Time extraTime = hwnStatistic.lrwpanPacketCount * MicroSeconds(((ebw+1)*20*16+22*16)/2);
     //suffix time
     //average packet length in time: T
     //we choose half of the length time waste
     // L / 2 us 
+
+
+
     Time suffixTime;
     if(hwnStatistic.lrwpanPacketCount == 0) suffixTime = Seconds(0);
-    else suffixTime = hwnStatistic.schedulingCount * (hwnStatistic.lrwpanCBTSum/hwnStatistic.lrwpanPacketCount/2);
+    else suffixTime = hwnStatistic.schedulingCount * (hwnStatistic.lrwpanCBTSum/hwnStatistic.lrwpanPacketCount +MicroSeconds(((ebw+1)*20*16+32*16)/2));
     return (extraTime + suffixTime + hwnStatistic.lrwpanCBTSum).GetSeconds()/hwnStatistic.lrwpanPeriodSum.GetSeconds();
   }
   double HwnGetCiWifi(void){ //congetion indicator
@@ -807,12 +927,12 @@ main (int argc, char *argv[])
   LogComponentEnableAll (LOG_PREFIX_TIME);
   LogComponentEnable ("LrWpanTestByXiao", LOG_INFO);
 
-  //Packet::EnablePrinting ();
-  //Packet::EnableChecking();
+  // Packet::EnablePrinting ();
+  // Packet::EnableChecking();
 
   int mode  = 7;
   int lrwpanNodeN = 1; //number of lrwpan sending nodes
-  int lrwpanPayloadSize = 20;
+  int lrwpanPayloadSize = 80;
   CommandLine cmd;
   cmd.Usage ("run simulation in different mode");
   cmd.AddValue ("mode",  "an int argument", mode);
@@ -825,7 +945,7 @@ main (int argc, char *argv[])
   double desiredWiFiSpeed =0; 
   // double desiredWiFiSpeedMax = 32; //Mbps
   // double desiredWiFiSpeedStep = 100; //Mbps
-  Time simulationTimePerRound = Seconds(300);
+  Time simulationTimePerRound = Seconds(10);
 
   std::ofstream simParams("SimParams.info");
 
@@ -1318,6 +1438,22 @@ Hwn::ReportLrwpanMacPromiscSniffer(Ptr<const Packet> p)
     Time txTime = m_lrWpanMac->SymbolToTime(symbolN);
     m_reportStatistic->lrwpanCBT += txTime;
     m_reportStatistic->lrwpanPacketCount ++;
+    if (macHdr.GetSrcAddrMode() == LrWpanMacHeader::SHORTADDR)
+    {
+      Mac16Address addr = macHdr.GetShortSrcAddr();
+      std::map<ns3::Mac16Address,Time>::iterator it;
+      it = m_reportStatistic->lrwpanCBTMap.find(addr);
+      if(it == m_reportStatistic->lrwpanCBTMap.end()){
+        //not found
+        m_reportStatistic->lrwpanCBTMap[addr] = txTime;
+      }else{
+        it->second += txTime;
+        // NS_LOG_INFO(it->second.GetSeconds());
+        // m_reportStatistic->lrwpanCBTMap[addr] = m_reportStatistic->lrwpanCBTMap[addr] + txTime;
+      }
+    }
+
+    // NS_LOG_INFO(m_reportStatistic->lrwpanCBTMap.size());
   }
 }
 void
@@ -1356,6 +1492,7 @@ Hwn::ScheduleReportStatisticStart(void)
   m_reportStatistic->wifiCBT = Seconds(0);
   m_reportStatistic->lrwpanPacketCount = 0;
   m_reportStatistic->wifiPacketCount = 0;
+  m_reportStatistic->lrwpanCBTMap.clear();
 }
 
 
@@ -1379,6 +1516,8 @@ Hwn::ScheduleReportStatisticEnd(void)
     param->lrwpanPacketCount = m_reportStatistic->lrwpanPacketCount;
     param->wifiCBT = m_reportStatistic->wifiCBT - wifiCtsDuration; //remove management frame : wifi CTS
     param->wifiPacketCount = m_reportStatistic->wifiPacketCount -1; //minus one wifi management frame: wifi CTS
+    // param->lrwpanCBTMap = m_reportStatistic->lrwpanCBTMap;
+    *(param->lrwpanCBTMap) = m_reportStatistic->lrwpanCBTMap;
     if(! m_scheduleReportCb.IsNull()) m_scheduleReportCb(param);
   }else{
     NS_LOG_ERROR("Unexpected m_hwnState state for statistic End");
