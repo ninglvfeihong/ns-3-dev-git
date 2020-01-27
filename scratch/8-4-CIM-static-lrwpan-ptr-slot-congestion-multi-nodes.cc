@@ -106,6 +106,7 @@ public:
     std::shared_ptr<std::map<ns3::Mac16Address,ns3::Time>> lrwpanCBTMap; //channel busy time map for each node
     uint64_t wifiPacketCount;  //wifi packet number
     uint64_t lrwpanPacketCount; //Lr-Wpan packet number
+    uint64_t lrwpanAckCount; //acknowledgement frame counter
     ScheduleReportParameters(){
       lrwpanCBTMap = std::make_shared<std::map<ns3::Mac16Address,ns3::Time>>();
     }
@@ -119,6 +120,7 @@ public:
     Time lrwpanCBT;       //!< Lr-Wpan channel busy time, exclude HWN management frame
     uint64_t wifiPacketCount;  //wifi packet number
     uint64_t lrwpanPacketCount; //Lr-Wpan packet number
+    uint64_t lrwpanAckCount; //acknowledgement frame counter
     std::map<ns3::Mac16Address,ns3::Time> lrwpanCBTMap; // channel busy time map for each node
   };
   /**
@@ -651,6 +653,7 @@ class Helper{
     Time wifiCBTSum;
     uint64_t lrwpanPacketCount;
     uint64_t wifiPacketCount;
+    uint64_t lrwpanAckCount; //acknowledgement frame counter;
 
   } hwnStatistic;
 
@@ -664,6 +667,7 @@ class Helper{
     hwnStatistic.lrwpanCBTSum = Seconds(0);
     hwnStatistic.wifiCBTSum = Seconds(0);
     hwnStatistic.lrwpanPacketCount = 0;
+    hwnStatistic.lrwpanAckCount = 0;
     hwnStatistic.wifiPacketCount = 0;
     hwnStatistic.lrwpanCBTSumMap.clear();
     
@@ -688,6 +692,7 @@ class Helper{
     hwnStatistic.wifiCBTSum += param->wifiCBT;
     hwnStatistic.lrwpanPacketCount += param->lrwpanPacketCount;
     hwnStatistic.wifiPacketCount += param->wifiPacketCount;
+    hwnStatistic.lrwpanAckCount += param->lrwpanAckCount;
 
     for (std::map<ns3::Mac16Address,ns3::Time>::iterator it = param->lrwpanCBTMap->begin();it!=param->lrwpanCBTMap->end();it++){
       
@@ -802,7 +807,7 @@ class Helper{
     // }
      //double tbw[] = {4.5, 4.5 , 3.68 , 3.02 , 2.58 , 2.28 , 2.06 , 1.89 , 1.76};
   //  double tbw[] = {4.5, 4.5 , 4.68 , 4.02 , 3.58 , 3.28 , 3.06 , 2.89 , 2.76};
-    size_t N = hwnStatistic.lrwpanCBTSumMap.size();
+    // size_t N = hwnStatistic.lrwpanCBTSumMap.size();
     std::vector<double> vec;
     double vecSum =0;
     double eta = hwnStatistic.lrwpanCBTSum.GetSeconds()/hwnStatistic.lrwpanPeriodSum.GetSeconds();
@@ -815,7 +820,8 @@ class Helper{
       vec[i] = vec[i]/vecSum * eta;
     }
     double ebw = calcEbw(vec);
-    NS_LOG_INFO(".......ebw...:" << ebw); 
+    // NS_LOG_INFO("...ratio..:" << 1.0*hwnStatistic.lrwpanAckCount/hwnStatistic.lrwpanPacketCount); 
+    // NS_LOG_INFO(".......ebw...:" << ebw); 
 
     //symbols
     //-- normal packet 
@@ -932,7 +938,7 @@ main (int argc, char *argv[])
 
   int mode  = 7;
   int lrwpanNodeN = 1; //number of lrwpan sending nodes
-  int lrwpanPayloadSize = 80;
+  int lrwpanPayloadSize = 20;
   CommandLine cmd;
   cmd.Usage ("run simulation in different mode");
   cmd.AddValue ("mode",  "an int argument", mode);
@@ -945,7 +951,7 @@ main (int argc, char *argv[])
   double desiredWiFiSpeed =0; 
   // double desiredWiFiSpeedMax = 32; //Mbps
   // double desiredWiFiSpeedStep = 100; //Mbps
-  Time simulationTimePerRound = Seconds(10);
+  Time simulationTimePerRound = Seconds(20);
 
   std::ofstream simParams("SimParams.info");
 
@@ -1438,6 +1444,7 @@ Hwn::ReportLrwpanMacPromiscSniffer(Ptr<const Packet> p)
     Time txTime = m_lrWpanMac->SymbolToTime(symbolN);
     m_reportStatistic->lrwpanCBT += txTime;
     m_reportStatistic->lrwpanPacketCount ++;
+    if( macHdr.IsAcknowledgment()) m_reportStatistic->lrwpanAckCount++;
     if (macHdr.GetSrcAddrMode() == LrWpanMacHeader::SHORTADDR)
     {
       Mac16Address addr = macHdr.GetShortSrcAddr();
@@ -1492,6 +1499,7 @@ Hwn::ScheduleReportStatisticStart(void)
   m_reportStatistic->wifiCBT = Seconds(0);
   m_reportStatistic->lrwpanPacketCount = 0;
   m_reportStatistic->wifiPacketCount = 0;
+  m_reportStatistic->lrwpanAckCount = 0;
   m_reportStatistic->lrwpanCBTMap.clear();
 }
 
@@ -1514,6 +1522,7 @@ Hwn::ScheduleReportStatisticEnd(void)
     param->csmaCompensation = param->csmaDelay; 
     param->lrwpanCBT = m_reportStatistic->lrwpanCBT;          //the management frame has already removed during statistic collection
     param->lrwpanPacketCount = m_reportStatistic->lrwpanPacketCount;
+    param->lrwpanAckCount = m_reportStatistic->lrwpanAckCount;
     param->wifiCBT = m_reportStatistic->wifiCBT - wifiCtsDuration; //remove management frame : wifi CTS
     param->wifiPacketCount = m_reportStatistic->wifiPacketCount -1; //minus one wifi management frame: wifi CTS
     // param->lrwpanCBTMap = m_reportStatistic->lrwpanCBTMap;
