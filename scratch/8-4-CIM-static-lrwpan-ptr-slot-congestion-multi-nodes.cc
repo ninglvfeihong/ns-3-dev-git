@@ -938,7 +938,7 @@ main (int argc, char *argv[])
 
   int mode  = 7;
   int lrwpanNodeN = 1; //number of lrwpan sending nodes
-  int lrwpanPayloadSize = 20;
+  int lrwpanPayloadSize = 50;
   CommandLine cmd;
   cmd.Usage ("run simulation in different mode");
   cmd.AddValue ("mode",  "an int argument", mode);
