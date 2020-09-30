@@ -206,6 +206,7 @@ NetDevCb(Ptr<NetDevice> netDev, Ptr<const Packet> p, uint16_t, const Address & a
   return true;
 }
 
+  ns3::Ptr<ns3::UniformRandomVariable> rand2 =0;
 void
 LrWpanSendSchedule(ns3::Ptr<ns3::Node> &sender,ns3::Ptr<ns3::Node> &receiver, 
                   const ns3::Time &start, const ns3::Time &end, const ns3::Time &interval)
@@ -214,8 +215,15 @@ LrWpanSendSchedule(ns3::Ptr<ns3::Node> &sender,ns3::Ptr<ns3::Node> &receiver,
   Address addr(receiver->GetDevice(0)->GetAddress());
   ns3::Time i;
   uint32_t j=0;
+  
+  if(rand2 == 0){
+    rand2 = CreateObject<UniformRandomVariable> ();
+    rand2->SetAttribute ("Min", DoubleValue (0.0));
+    rand2->SetAttribute ("Max", DoubleValue (1.0));
+  }
   for(i= start;  i<end; i += interval){
-    Ptr<Packet> p = Create<Packet>(20); //20 byte packet
+  int payloadSize =  10 + floor(rand2->GetValue() * 60);
+    Ptr<Packet> p = Create<Packet>(payloadSize); //20 byte packet
     Simulator::Schedule(i,&NetDevice::Send,
                       sender->GetDevice(0),
                       p,
@@ -381,7 +389,7 @@ main (int argc, char *argv[])
   ns3::NetDeviceContainer lrDevices = lrWpanHelper.Install(lrPandNodes);
 
   LrWpanPhyPibAttributes lrWpanPibAttribute;
-  lrWpanPibAttribute.phyCurrentChannel = 17;
+  lrWpanPibAttribute.phyCurrentChannel = 26;
   lrDevices.Get(0)->GetObject<LrWpanNetDevice>()->GetPhy()->PlmeSetAttributeRequest(ns3::LrWpanPibAttributeIdentifier::phyCurrentChannel,&lrWpanPibAttribute);
   lrDevices.Get(1)->GetObject<LrWpanNetDevice>()->GetPhy()->PlmeSetAttributeRequest(ns3::LrWpanPibAttributeIdentifier::phyCurrentChannel,&lrWpanPibAttribute);
 
@@ -394,9 +402,9 @@ main (int argc, char *argv[])
   recver->GetDevice(0)->SetReceiveCallback(MakeCallback(&xiao::NetDevCb));
 
   //stupid way scheduling packet seding
-  xiao::LrWpanSendScheduleBroadcast(sender, MilliSeconds(4000),MilliSeconds(60000),MilliSeconds(500));
+  //xiao::LrWpanSendScheduleBroadcast(sender, MilliSeconds(4000),MilliSeconds(60000),MilliSeconds(500));
   //xiao::LrWpanSendScheduleBroadcastRandom(sender, MilliSeconds(150),MilliSeconds(300),MilliSeconds(10));
-  //xiao::LrWpanSendSchedule(sender,recver, MilliSeconds(150),MilliSeconds(300),MilliSeconds(10));
+  xiao::LrWpanSendSchedule(sender,recver, MilliSeconds(150),MilliSeconds(6000),MilliSeconds(1));
  
   //std::cout << recver->GetDevice(0)->GetAddress() << " -- " << sender->GetDevice(0)->GetAddress() << std::endl;
   lrWpanHelper.EnablePcapAll("lrpwan_test",true);
@@ -561,8 +569,8 @@ main (int argc, char *argv[])
 
 
 
-  Simulator::Stop (MilliSeconds (70000));
-  xiao_helper.PlaceSpectrum(channel,Vector(5,1,0),Seconds(38),Seconds(38.02),MicroSeconds(1));
+  Simulator::Stop (MilliSeconds (4000));
+  xiao_helper.PlaceSpectrum(channel,Vector(5,1,0),Seconds(3.8),Seconds(3.9),MicroSeconds(10));
   //xiao_helper.ConfigStorShow();
   xiao_helper.makeAnim();
   Simulator::Run ();
